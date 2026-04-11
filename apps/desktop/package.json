@@ -1,0 +1,22 @@
+{
+  "name": "@memo-inbox/desktop",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "node -e \"process.exit(0)\"",
+    "tauri": "tauri"
+  },
+  "dependencies": {
+    "@memo-inbox/app-core": "workspace:*",
+    "@memo-inbox/platform-bridge": "workspace:*",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.2.5"
+  }
+}

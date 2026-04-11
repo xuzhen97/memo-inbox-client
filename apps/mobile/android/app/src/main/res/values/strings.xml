@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Memo Inbox Client</string>
+    <string name="title_activity_main">Memo Inbox Client</string>
+    <string name="package_name">com.xuzhen97.memoInboxClient</string>
+    <string name="custom_url_scheme">com.xuzhen97.memoInboxClient</string>
+</resources>

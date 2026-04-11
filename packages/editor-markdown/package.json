@@ -1,0 +1,14 @@
+{
+  "name": "@memo-inbox/editor-markdown",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "build": "pnpm run typecheck",
+    "test": "node -e \"process.exit(0)\""
+  },
+  "dependencies": {
+    "@memo-inbox/shared-types": "workspace:*"
+  }
+}

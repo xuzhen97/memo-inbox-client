@@ -1,0 +1,14 @@
+{
+  "name": "@memo-inbox/platform-bridge",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "build": "pnpm run typecheck",
+    "test": "vitest run src/__tests__/webBridge.test.ts"
+  },
+  "dependencies": {
+    "@memo-inbox/shared-types": "workspace:*"
+  }
+}

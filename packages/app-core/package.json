@@ -1,0 +1,21 @@
+{
+  "name": "@memo-inbox/app-core",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "build": "pnpm run typecheck",
+    "test": "vitest run src/__tests__/createQueryClient.test.ts"
+  },
+  "dependencies": {
+    "@memo-inbox/api-client": "workspace:*",
+    "@memo-inbox/editor-markdown": "workspace:*",
+    "@memo-inbox/platform-bridge": "workspace:*",
+    "@memo-inbox/shared-types": "workspace:*",
+    "@memo-inbox/ui-kit": "workspace:*",
+    "@tanstack/react-query": "^5.74.4",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1"
+  }
+}
