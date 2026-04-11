@@ -4,6 +4,8 @@
 
 当前阶段包含三端工程骨架、共享架构占位首页，以及 Windows / Android 打包链路验证；仍不包含任何 memo 业务功能。
 
+当前也已经补齐 `packages/shared-types` 与 `packages/api-client` 的 MemoInboxAPI 基础 SDK，可用于 HTTP 接口和任务 WebSocket 事件接入。
+
 ## 目录约定
 
 - `apps/*`：三端入口壳层，后续分别承载 Web、Desktop、Mobile 启动入口。
@@ -43,6 +45,39 @@ pnpm --filter "@memo-inbox/web" dev
 
 ```bash
 pnpm --filter "@memo-inbox/web" build
+```
+
+## SDK 使用
+
+HTTP client：
+
+```ts
+import { createApiClient } from "@memo-inbox/api-client";
+
+const api = createApiClient({
+  baseUrl: "http://127.0.0.1:3030",
+  bearerToken: "<Bearer Token>"
+});
+
+const memos = await api.memos.list({ limit: 20 });
+```
+
+Task WebSocket client：
+
+```ts
+import { createTaskEventClient } from "@memo-inbox/api-client";
+
+const taskEvents = createTaskEventClient({
+  baseUrl: "http://127.0.0.1:3030",
+  vcpKey: "<VCP_Key>"
+});
+
+taskEvents.on("memo_task_completed", (event) => {
+  console.log(event.data.taskId);
+});
+
+await taskEvents.connect();
+taskEvents.subscribeTask("memo-task-xxx");
 ```
 
 ### Windows EXE

@@ -6,7 +6,7 @@
   "scripts": {
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "build": "pnpm run typecheck",
-    "test": "node -e \"process.exit(0)\""
+    "test": "vitest run src/__tests__"
   },
   "dependencies": {
     "@memo-inbox/shared-types": "workspace:*"
