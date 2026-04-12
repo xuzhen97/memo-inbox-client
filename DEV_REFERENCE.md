@@ -156,8 +156,8 @@ pnpm --filter "@memo-inbox/desktop" build
    在 `api-client` 中封装基于 React Query 的 Hooks（如 `useMemoList`, `useCreateMemo`）。
 3. ~~**落实 Design Token**~~ ✅已完成
    对照 `DESIGN.md`，在 `tooling-config/src/tailwind-preset.ts` 补齐所有的 `surface` 色板和字体设定。
-4. **开发 UI 组件**
-   在 `ui-kit` 中开发纯展示的 `MemoCard`、按钮和标签等。
+4. ~~**开发 UI 组件**~~ ✅已完成
+   在 `ui-kit` 中开发了基于 Tailwind 的纯展示组件（`Button`、`Tag`、`MemoCard`）及通用 `cn` 工具，支持灵活插拔主题类名。
 5. **装配 Inbox 列表页**
    在 `app-core` 建立 `InboxPage.tsx`，组合 Query Hooks 和 UI 组件；同时将 `createAppRouter` 升级为真正的 React Router。
 6. **升级持久化存储**

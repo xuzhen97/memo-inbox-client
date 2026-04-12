@@ -7,5 +7,18 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "build": "pnpm run typecheck",
     "test": "node -e \"process.exit(0)\""
+  },
+  "dependencies": {
+    "clsx": "^2.1.1",
+    "lucide-react": "^0.470.0",
+    "tailwind-merge": "^2.6.0"
+  },
+  "peerDependencies": {
+    "react": "^18.2.0 || ^19.0.0",
+    "react-dom": "^18.2.0 || ^19.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0"
   }
 }
