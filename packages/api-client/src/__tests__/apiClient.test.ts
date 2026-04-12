@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { createApiClient } from "../index";
+import { invalidateMemoQueries } from "../hooks";
 
 function jsonResponse(body: unknown, init?: ResponseInit) {
   return new Response(JSON.stringify(body), {
@@ -209,5 +210,18 @@ describe("createApiClient", () => {
     expect(calls[16][0]).toBe("http://localhost:3030/api/plugins/MemoInboxAPI/maintenance/reconcile");
     expect(calls[16][1].method).toBe("POST");
     expect(calls[17][0]).toBe("http://localhost:3030/api/plugins/MemoInboxAPI/status");
+  });
+
+  it("invalidates memo detail, list and search queries after remove succeeds", async () => {
+    const invalidateQueries = vi.fn().mockResolvedValue(undefined);
+    const queryClient = {
+      invalidateQueries,
+    };
+
+    invalidateMemoQueries(queryClient, "memo_1");
+
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ["memos", "detail", "memo_1"] });
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ["memos", "list"] });
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ["memos", "search"] });
   });
 });

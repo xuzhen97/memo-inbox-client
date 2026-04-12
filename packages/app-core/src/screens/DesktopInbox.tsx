@@ -1,9 +1,13 @@
 import * as React from "react";
-import { Button, Tag, type MemoAttachmentPreview } from "@memo-inbox/ui-kit";
-import { Search, Bell, Settings, User, Image as ImageIcon, Tag as TagIcon, Link as LinkIcon, RefreshCcw, CheckCircle2, Loader2, X } from "lucide-react";
+import { Search, Bell, Settings, User, Image as ImageIcon, Tag as TagIcon, Link as LinkIcon, CheckCircle2, Loader2, X } from "lucide-react";
 import { useApiClient } from "../api/ApiClientContext";
-import { useMemoList, useCreateMemo, useMemoSearch } from "@memo-inbox/api-client";
+import { useMemoList, useCreateMemo, useMemoSearch, useRemoveMemo } from "@memo-inbox/api-client";
 import type { MemoDto } from "@memo-inbox/shared-types";
+import {
+  cancelMemoDeleteConfirmation,
+  confirmMemoDelete,
+  openMemoDeleteConfirmation,
+} from "./memoDeleteState";
 
 const baseUrl = (import.meta as any).env?.VITE_API_URL || "http://127.0.0.1:6005";
 
@@ -40,6 +44,8 @@ export function DesktopInbox() {
 
   type FilterType = "all" | "today" | "has_image";
   const [activeFilter, setActiveFilter] = React.useState<FilterType>("all");
+  const [pendingDeleteMemoId, setPendingDeleteMemoId] = React.useState<string | null>(null);
+  const [deleteErrorMessage, setDeleteErrorMessage] = React.useState<string | null>(null);
 
   const apiClient = useApiClient();
 
@@ -57,8 +63,17 @@ export function DesktopInbox() {
   });
 
   const { mutateAsync: createMemo, isPending: isCreating } = useCreateMemo(apiClient);
+  const { mutateAsync: removeMemo, isPending: isRemoving } = useRemoveMemo(apiClient);
 
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  const applyDeleteState = React.useCallback((state: {
+    pendingDeleteMemoId: string | null;
+    deleteErrorMessage: string | null;
+  }) => {
+    setPendingDeleteMemoId(state.pendingDeleteMemoId);
+    setDeleteErrorMessage(state.deleteErrorMessage);
+  }, []);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
@@ -121,6 +136,26 @@ export function DesktopInbox() {
     } else {
       setSelectedTag(tag);
     }
+  };
+
+  const handleDeleteClick = (memoId: string) => {
+    applyDeleteState(openMemoDeleteConfirmation(memoId));
+  };
+
+  const handleDeleteCancel = () => {
+    applyDeleteState(
+      cancelMemoDeleteConfirmation(
+        {
+          pendingDeleteMemoId,
+          deleteErrorMessage,
+        },
+        isRemoving,
+      ),
+    );
+  };
+
+  const handleDeleteConfirm = async (memoId: string) => {
+    applyDeleteState(await confirmMemoDelete(memoId, removeMemo));
   };
 
   const activeTags = ["工作", "日常", "灵感", "阅读", "设计"];
@@ -329,6 +364,11 @@ export function DesktopInbox() {
 
           {/* Memo List Rendered Customly for exact design match */}
           <div className="flex flex-col gap-6">
+            {deleteErrorMessage && (
+              <div className="rounded-[20px] bg-red-50 px-4 py-3 text-sm text-red-700">
+                {deleteErrorMessage}
+              </div>
+            )}
             {isLoading ? (
               <div className="flex justify-center py-10 opacity-50">
                 <Loader2 size={24} className="animate-spin text-primary" />
@@ -340,11 +380,52 @@ export function DesktopInbox() {
             ) : (
               memos.map((memo) => {
                 const dateHeader = new Date(memo.createdAt).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true });
+                const isConfirmingDelete = pendingDeleteMemoId === memo.memoId;
+                const isDeletingCurrentMemo = isRemoving && isConfirmingDelete;
                 return (
-                  <article key={memo.memoId} className="bg-surface-container-low p-8 rounded-[24px] border border-outline-variant/5">
-                    <div className="text-[10px] uppercase font-bold tracking-widest text-on-surface-variant/40 mb-6">
-                      {dateHeader} · 记录
+                  <article key={memo.memoId} className="group bg-surface-container-low p-8 rounded-[24px] border border-outline-variant/5">
+                    <div className="mb-4 flex items-start justify-between gap-4">
+                      <div className="text-[10px] uppercase font-bold tracking-widest text-on-surface-variant/40">
+                        {dateHeader} · 记录
+                      </div>
+                      {isConfirmingDelete ? (
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            className="rounded-full bg-red-100 px-3 py-1.5 text-[11px] font-bold text-red-700 transition-colors disabled:opacity-50"
+                            onClick={() => void handleDeleteConfirm(memo.memoId)}
+                            disabled={isDeletingCurrentMemo}
+                            aria-label="确认移入回收站"
+                          >
+                            {isDeletingCurrentMemo ? "删除中..." : "确认删除"}
+                          </button>
+                          <button
+                            type="button"
+                            className="rounded-full bg-surface-container px-3 py-1.5 text-[11px] font-bold text-on-surface-variant transition-colors disabled:opacity-50"
+                            onClick={handleDeleteCancel}
+                            disabled={isDeletingCurrentMemo}
+                            aria-label="取消删除"
+                          >
+                            取消
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          className="text-[11px] font-bold text-on-surface-variant/45 opacity-0 transition-all hover:text-red-700 group-hover:opacity-100 disabled:opacity-30"
+                          onClick={() => handleDeleteClick(memo.memoId)}
+                          disabled={isRemoving}
+                          aria-label="删除这条 memo"
+                        >
+                          删除
+                        </button>
+                      )}
                     </div>
+                    {isConfirmingDelete && (
+                      <div className="mb-4 text-[12px] text-on-surface-variant">
+                        移入回收站？
+                      </div>
+                    )}
                     <p className="font-sans text-lg text-primary leading-[1.8] whitespace-pre-wrap mb-6">
                       {memo.content}
                     </p>

@@ -4,6 +4,16 @@ import { queryKeys } from "./index";
 import type { CreateMemoInput, UpdateMemoInput, SearchMemosInput } from "@memo-inbox/shared-types";
 
 export type ApiClient = ReturnType<typeof createApiClient>;
+type QueryInvalidator = Pick<ReturnType<typeof useQueryClient>, "invalidateQueries">;
+
+export function invalidateMemoQueries(queryClient: QueryInvalidator, memoId?: string) {
+  if (memoId) {
+    queryClient.invalidateQueries({ queryKey: [...queryKeys.memos, "detail", memoId] });
+  }
+
+  queryClient.invalidateQueries({ queryKey: [...queryKeys.memos, "list"] });
+  queryClient.invalidateQueries({ queryKey: [...queryKeys.memos, "search"] });
+}
 
 export function useMemoList(apiClient: ApiClient, input?: { limit?: number; cursor?: string }) {
   return useQuery({
@@ -36,8 +46,7 @@ export function useUpdateMemo(apiClient: ApiClient) {
     mutationFn: ({ memoId, input }: { memoId: string; input: UpdateMemoInput }) =>
       apiClient.memos.update(memoId, input),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: [...queryKeys.memos, "detail", variables.memoId] });
-      queryClient.invalidateQueries({ queryKey: [...queryKeys.memos, "list"] });
+      invalidateMemoQueries(queryClient, variables.memoId);
     },
   });
 }
@@ -47,8 +56,7 @@ export function useRemoveMemo(apiClient: ApiClient) {
   return useMutation({
     mutationFn: (memoId: string) => apiClient.memos.remove(memoId),
     onSuccess: (_, memoId) => {
-      queryClient.invalidateQueries({ queryKey: [...queryKeys.memos, "detail", memoId] });
-      queryClient.invalidateQueries({ queryKey: [...queryKeys.memos, "list"] });
+      invalidateMemoQueries(queryClient, memoId);
     },
   });
 }
@@ -58,8 +66,7 @@ export function useRestoreMemo(apiClient: ApiClient) {
   return useMutation({
     mutationFn: (memoId: string) => apiClient.memos.restore(memoId),
     onSuccess: (_, memoId) => {
-      queryClient.invalidateQueries({ queryKey: [...queryKeys.memos, "detail", memoId] });
-      queryClient.invalidateQueries({ queryKey: [...queryKeys.memos, "list"] });
+      invalidateMemoQueries(queryClient, memoId);
     },
   });
 }
