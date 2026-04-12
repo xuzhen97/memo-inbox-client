@@ -154,7 +154,7 @@ pnpm --filter "@memo-inbox/desktop" build
    在 `app-core` 中添加 `ApiClientContext`，并在启动时传入服务端 URL 与 Token，供 React 树内部调用。
 2. ~~**封装 Query Hooks**~~ ✅已完成
    在 `api-client` 中封装基于 React Query 的 Hooks（如 `useMemoList`, `useCreateMemo`）。
-3. **落实 Design Token**
+3. ~~**落实 Design Token**~~ ✅已完成
    对照 `DESIGN.md`，在 `tooling-config/src/tailwind-preset.ts` 补齐所有的 `surface` 色板和字体设定。
 4. **开发 UI 组件**
    在 `ui-kit` 中开发纯展示的 `MemoCard`、按钮和标签等。
