@@ -115,6 +115,12 @@ importers:
       '@memo-inbox/shared-types':
         specifier: workspace:*
         version: link:../shared-types
+      '@tanstack/react-query':
+        specifier: ^5.97.0
+        version: 5.97.0(react@19.2.5)
+      react:
+        specifier: ^19.2.5
+        version: 19.2.5
 
   packages/app-core:
     dependencies:

@@ -9,6 +9,8 @@
     "test": "vitest run src/__tests__"
   },
   "dependencies": {
-    "@memo-inbox/shared-types": "workspace:*"
+    "@memo-inbox/shared-types": "workspace:*",
+    "@tanstack/react-query": "^5.97.0",
+    "react": "^19.2.5"
   }
 }

@@ -534,3 +534,6 @@ function buildTaskEventUrl(baseUrl: string, vcpKey: string) {
   const protocol = parsed.protocol === "https:" ? "wss:" : "ws:";
   return `${protocol}//${parsed.host}/vcp-memo-inbox/VCP_Key=${encodeURIComponent(vcpKey)}`;
 }
+
+export * from "./hooks";
+
