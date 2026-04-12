@@ -142,6 +142,9 @@ importers:
       '@tanstack/react-query':
         specifier: ^5.74.4
         version: 5.97.0(react@19.2.5)
+      lucide-react:
+        specifier: ^0.470.0
+        version: 0.470.0(react@19.2.5)
       react:
         specifier: ^19.1.1
         version: 19.2.5

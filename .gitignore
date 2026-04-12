@@ -9,3 +9,5 @@ apps/desktop/src-tauri/target/
 apps/desktop/src-tauri/gen/
 apps/mobile/android/.gradle/
 apps/mobile/android/local.properties
+.gitnexus
+.env

@@ -61,7 +61,7 @@ export function resolveMemoInboxClientConfig(config: MemoInboxClientConfig): Res
     throw createApiError("bearerToken is required", "INVALID_CONFIG", 500);
   }
 
-  const fetchImpl = config.fetch ?? globalThis.fetch;
+  const fetchImpl = config.fetch ?? globalThis.fetch.bind(globalThis);
 
   if (typeof fetchImpl !== "function") {
     throw createApiError("fetch implementation is required", "INVALID_CONFIG", 500);
