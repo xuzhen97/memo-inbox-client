@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { ShellHomePage } from "../screens/ShellHomePage";
 import { DesktopInbox } from "../screens/DesktopInbox";
 import { DesktopReview } from "../screens/DesktopReview";
+import { DesktopArchive } from "../screens/DesktopArchive";
 import { DesktopMemoEdit } from "../screens/DesktopMemoEdit";
 import { usePlatformBridge } from "../platform/PlatformBridgeContext";
 
@@ -16,6 +17,10 @@ function renderRoute(pathname: string) {
 
   if (pathname === "/review") {
     return <DesktopReview />;
+  }
+
+  if (pathname === "/archive") {
+    return <DesktopArchive />;
   }
 
   if (pathname === "/") {

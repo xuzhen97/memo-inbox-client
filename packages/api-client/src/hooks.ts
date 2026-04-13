@@ -13,6 +13,7 @@ export function invalidateMemoQueries(queryClient: QueryInvalidator, memoId?: st
 
   queryClient.invalidateQueries({ queryKey: [...queryKeys.memos, "list"] });
   queryClient.invalidateQueries({ queryKey: [...queryKeys.memos, "search"] });
+  queryClient.invalidateQueries({ queryKey: [...queryKeys.memos, "trash"] });
 }
 
 export function useMemoList(apiClient: ApiClient, input?: { limit?: number; cursor?: string }) {
@@ -65,6 +66,16 @@ export function useRestoreMemo(apiClient: ApiClient) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (memoId: string) => apiClient.memos.restore(memoId),
+    onSuccess: (_, memoId) => {
+      invalidateMemoQueries(queryClient, memoId);
+    },
+  });
+}
+
+export function usePurgeMemo(apiClient: ApiClient) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (memoId: string) => apiClient.memos.purge(memoId),
     onSuccess: (_, memoId) => {
       invalidateMemoQueries(queryClient, memoId);
     },

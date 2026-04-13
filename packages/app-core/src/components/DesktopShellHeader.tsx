@@ -4,12 +4,12 @@ import { Bell, Settings, User } from "lucide-react";
 import { appNavigateEvent } from "../router/createAppRouter";
 
 interface DesktopShellHeaderProps {
-  activeTab: "all" | "review";
+  activeTab: "all" | "review" | "archive";
   centerSlot?: ReactNode;
 }
 
 export function DesktopShellHeader({ activeTab, centerSlot }: DesktopShellHeaderProps) {
-  const tabClass = (tab: "all" | "review") =>
+  const tabClass = (tab: "all" | "review" | "archive") =>
     activeTab === tab
       ? "text-primary font-bold"
       : "text-on-surface-variant/50 transition-colors hover:text-primary";
@@ -56,9 +56,10 @@ export function DesktopShellHeader({ activeTab, centerSlot }: DesktopShellHeader
           </button>
           <button
             type="button"
-            aria-label="归档暂未接入"
-            className="cursor-not-allowed text-on-surface-variant/35"
-            disabled
+            aria-label="前往归档页面"
+            aria-current={activeTab === "archive" ? "page" : undefined}
+            className={tabClass("archive")}
+            onClick={() => navigateTo("/archive")}
           >
             归档
           </button>
