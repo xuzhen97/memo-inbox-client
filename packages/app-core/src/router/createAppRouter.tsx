@@ -1,11 +1,29 @@
 import { useEffect, useState } from "react";
 import { ShellHomePage } from "../screens/ShellHomePage";
 import { DesktopInbox } from "../screens/DesktopInbox";
+import { DesktopMemoEdit } from "../screens/DesktopMemoEdit";
 import { usePlatformBridge } from "../platform/PlatformBridgeContext";
+
+export const appNavigateEvent = "memo-inbox:navigate";
+
+function renderRoute(pathname: string) {
+  const editMatch = pathname.match(/^\/memos\/([^/]+)\/edit\/?$/);
+
+  if (editMatch) {
+    return <DesktopMemoEdit memoId={decodeURIComponent(editMatch[1])} />;
+  }
+
+  if (pathname === "/") {
+    return <DesktopInbox />;
+  }
+
+  return <ShellHomePage />;
+}
 
 function RootRouter() {
   const platformBridge = usePlatformBridge();
   const [kind, setKind] = useState<string>("unknown");
+  const [pathname, setPathname] = useState(() => window.location.pathname || "/");
 
   useEffect(() => {
     platformBridge.getPlatformInfo().then((info) => {
@@ -13,15 +31,22 @@ function RootRouter() {
     });
   }, [platformBridge]);
 
-  if (kind === "desktop") {
-    return <DesktopInbox />;
-  }
+  useEffect(() => {
+    const syncPathname = () => {
+      setPathname(window.location.pathname || "/");
+    };
 
-  // Provide DesktopInbox for web testing as well if we run the web app in large screen, 
-  // but for now default to DesktopInbox if we are just testing "dev".
-  // To strictly align with requirements, if it's not desktop, fallback to ShellHomePage
-  // Let's just render DesktopInbox as default to make sure we see it when running `pnpm dev`.
-  return <DesktopInbox />;
+    window.addEventListener("popstate", syncPathname);
+    window.addEventListener(appNavigateEvent, syncPathname);
+
+    return () => {
+      window.removeEventListener("popstate", syncPathname);
+      window.removeEventListener(appNavigateEvent, syncPathname);
+    };
+  }, []);
+
+  void kind;
+  return renderRoute(pathname);
 }
 
 export function createAppRouter() {

@@ -199,6 +199,8 @@ export interface CreateMemoInput {
 export interface UpdateMemoInput {
   content?: string;
   tags?: string[];
+  keepAttachmentUrls?: string[];
+  files?: File[];
 }
 
 export interface ListMemosInput {

@@ -89,7 +89,7 @@ export function createApiClient(config: MemoInboxClientConfig) {
       update: (memoId: string, input: UpdateMemoInput) =>
         requestJson<MemoDto>(resolved, `/memos/${encodeURIComponent(memoId)}`, {
           method: "PATCH",
-          body: input
+          body: buildUpdateMemoBody(input)
         }),
       remove: (memoId: string) =>
         requestJson<void>(resolved, `/memos/${encodeURIComponent(memoId)}`, {
@@ -480,6 +480,37 @@ function buildCreateMemoBody(input: CreateMemoInput): FormData | Record<string, 
   };
 }
 
+function buildUpdateMemoBody(input: UpdateMemoInput): FormData | Record<string, unknown> {
+  const hasAttachmentChanges = Boolean(input.keepAttachmentUrls || (input.files && input.files.length > 0));
+
+  if (!hasAttachmentChanges) {
+    return {
+      content: input.content,
+      tags: input.tags
+    };
+  }
+
+  const formData = new FormData();
+
+  if (input.content !== undefined) {
+    formData.set("content", input.content);
+  }
+
+  if (input.tags !== undefined) {
+    formData.set("tags", JSON.stringify(input.tags));
+  }
+
+  if (input.keepAttachmentUrls !== undefined) {
+    formData.set("keepAttachmentUrls", JSON.stringify(input.keepAttachmentUrls));
+  }
+
+  for (const file of input.files ?? []) {
+    formData.append("files[]", file);
+  }
+
+  return formData;
+}
+
 function parseResponseText(text: string): unknown {
   if (!text.trim()) {
     return undefined;
@@ -536,4 +567,3 @@ function buildTaskEventUrl(baseUrl: string, vcpKey: string) {
 }
 
 export * from "./hooks";
-

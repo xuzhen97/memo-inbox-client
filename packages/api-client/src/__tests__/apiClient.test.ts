@@ -131,6 +131,56 @@ describe("createApiClient", () => {
     expect(getHeader(init.headers, "Content-Type")).toBeNull();
   });
 
+  it("sends multipart bodies for memo updates with attachment changes", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ memoId: "memo_2" }));
+    const client = createApiClient({
+      baseUrl: "http://localhost:3030",
+      bearerToken: "secret",
+      fetch: fetchMock
+    });
+
+    await client.memos.update("memo_2", {
+      content: "updated",
+      tags: ["memo", "edited"],
+      keepAttachmentUrls: ["https://example.com/kept.png"],
+      files: [new File(["img"], "new.png", { type: "image/png" })]
+    });
+
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    const formData = init.body as FormData;
+
+    expect(init.method).toBe("PATCH");
+    expect(formData).toBeInstanceOf(FormData);
+    expect(formData.get("content")).toBe("updated");
+    expect(formData.get("tags")).toBe("[\"memo\",\"edited\"]");
+    expect(formData.get("keepAttachmentUrls")).toBe("[\"https://example.com/kept.png\"]");
+    expect(formData.getAll("files[]")).toHaveLength(1);
+    expect(getHeader(init.headers, "Content-Type")).toBeNull();
+  });
+
+  it("sends JSON bodies for memo updates without attachment changes", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ memoId: "memo_2" }));
+    const client = createApiClient({
+      baseUrl: "http://localhost:3030",
+      bearerToken: "secret",
+      fetch: fetchMock
+    });
+
+    await client.memos.update("memo_2", {
+      content: "updated",
+      tags: ["memo", "edited"]
+    });
+
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+
+    expect(init.method).toBe("PATCH");
+    expect(getHeader(init.headers, "Content-Type")).toBe("application/json");
+    expect(JSON.parse(String(init.body))).toEqual({
+      content: "updated",
+      tags: ["memo", "edited"]
+    });
+  });
+
   it("routes CRUD, search, review, import, task, maintenance and status requests to the expected endpoints", async () => {
     const fetchMock = vi
       .fn()

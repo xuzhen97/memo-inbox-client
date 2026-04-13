@@ -1,20 +1,34 @@
 import * as React from "react";
 import { Search, Bell, Settings, User, Image as ImageIcon, Tag as TagIcon, Link as LinkIcon, CheckCircle2, Loader2, X } from "lucide-react";
 import { useApiClient } from "../api/ApiClientContext";
+import { useAppConfig } from "../config/AppConfigContext";
 import { useMemoList, useCreateMemo, useMemoSearch, useRemoveMemo } from "@memo-inbox/api-client";
 import type { MemoDto } from "@memo-inbox/shared-types";
+import { appNavigateEvent } from "../router/createAppRouter";
+import { formatDateTime } from "../utils/formatDateTime";
 import {
   cancelMemoDeleteConfirmation,
   confirmMemoDelete,
   openMemoDeleteConfirmation,
 } from "./memoDeleteState";
 
-const baseUrl = (import.meta as any).env?.VITE_API_URL || "http://127.0.0.1:6005";
-
-function resolveAttachmentUrl(url?: string) {
+function resolveAttachmentUrl(baseUrl: string, url?: string) {
   if (!url) return "";
   if (url.startsWith("http") || url.startsWith("blob:")) return url;
   return `${baseUrl}${url.startsWith("/") ? "" : "/"}${url}`;
+}
+
+function normalizeAttachmentUrl(attachment: unknown) {
+  if (typeof attachment === "string") {
+    return attachment;
+  }
+
+  if (attachment && typeof attachment === "object" && "url" in attachment) {
+    const url = (attachment as { url?: unknown }).url;
+    return typeof url === "string" ? url : "";
+  }
+
+  return "";
 }
 
 // Hook for debounce
@@ -30,6 +44,7 @@ function useDebounce<T>(value: T, delay: number): T {
 }
 
 export function DesktopInbox() {
+  const { apiUrl } = useAppConfig();
   const [memoText, setMemoText] = React.useState("");
   const [memoTags, setMemoTags] = React.useState<string[]>([]);
   const [tagInputValue, setTagInputValue] = React.useState("");
@@ -46,6 +61,11 @@ export function DesktopInbox() {
   const [activeFilter, setActiveFilter] = React.useState<FilterType>("all");
   const [pendingDeleteMemoId, setPendingDeleteMemoId] = React.useState<string | null>(null);
   const [deleteErrorMessage, setDeleteErrorMessage] = React.useState<string | null>(null);
+  const [lightboxState, setLightboxState] = React.useState<{
+    memoId: string;
+    attachmentUrls: string[];
+    activeIndex: number;
+  } | null>(null);
 
   const apiClient = useApiClient();
 
@@ -157,6 +177,74 @@ export function DesktopInbox() {
   const handleDeleteConfirm = async (memoId: string) => {
     applyDeleteState(await confirmMemoDelete(memoId, removeMemo));
   };
+
+  const handleEditClick = (memoId: string) => {
+    window.history.pushState({}, "", `/memos/${encodeURIComponent(memoId)}/edit`);
+    window.dispatchEvent(new Event(appNavigateEvent));
+  };
+
+  const openLightbox = (memoId: string, attachmentUrls: string[], activeIndex: number) => {
+    setLightboxState({
+      memoId,
+      attachmentUrls,
+      activeIndex
+    });
+  };
+
+  const closeLightbox = () => {
+    setLightboxState(null);
+  };
+
+  const showPreviousLightboxImage = () => {
+    setLightboxState((current) => {
+      if (!current) {
+        return null;
+      }
+
+      return {
+        ...current,
+        activeIndex: current.activeIndex === 0
+          ? current.attachmentUrls.length - 1
+          : current.activeIndex - 1
+      };
+    });
+  };
+
+  const showNextLightboxImage = () => {
+    setLightboxState((current) => {
+      if (!current) {
+        return null;
+      }
+
+      return {
+        ...current,
+        activeIndex: current.activeIndex === current.attachmentUrls.length - 1
+          ? 0
+          : current.activeIndex + 1
+      };
+    });
+  };
+
+  React.useEffect(() => {
+    if (!lightboxState) {
+      return;
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        closeLightbox();
+      } else if (event.key === "ArrowLeft") {
+        showPreviousLightboxImage();
+      } else if (event.key === "ArrowRight") {
+        showNextLightboxImage();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [lightboxState]);
 
   const activeTags = ["工作", "日常", "灵感", "阅读", "设计"];
 
@@ -379,7 +467,7 @@ export function DesktopInbox() {
               </div>
             ) : (
               memos.map((memo) => {
-                const dateHeader = new Date(memo.createdAt).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true });
+                const dateHeader = formatDateTime(memo.createdAt);
                 const isConfirmingDelete = pendingDeleteMemoId === memo.memoId;
                 const isDeletingCurrentMemo = isRemoving && isConfirmingDelete;
                 return (
@@ -410,15 +498,25 @@ export function DesktopInbox() {
                           </button>
                         </div>
                       ) : (
-                        <button
-                          type="button"
-                          className="text-[11px] font-bold text-on-surface-variant/45 opacity-0 transition-all hover:text-red-700 group-hover:opacity-100 disabled:opacity-30"
-                          onClick={() => handleDeleteClick(memo.memoId)}
-                          disabled={isRemoving}
-                          aria-label="删除这条 memo"
-                        >
-                          删除
-                        </button>
+                        <div className="flex items-center gap-3">
+                          <button
+                            type="button"
+                            className="text-[11px] font-bold text-on-surface-variant/45 opacity-0 transition-all hover:text-primary group-hover:opacity-100"
+                            onClick={() => handleEditClick(memo.memoId)}
+                            aria-label="编辑这条 memo"
+                          >
+                            编辑
+                          </button>
+                          <button
+                            type="button"
+                            className="text-[11px] font-bold text-on-surface-variant/45 opacity-0 transition-all hover:text-red-700 group-hover:opacity-100 disabled:opacity-30"
+                            onClick={() => handleDeleteClick(memo.memoId)}
+                            disabled={isRemoving}
+                            aria-label="删除这条 memo"
+                          >
+                            删除
+                          </button>
+                        </div>
                       )}
                     </div>
                     {isConfirmingDelete && (
@@ -431,18 +529,51 @@ export function DesktopInbox() {
                     </p>
 
                     {memo.attachments && memo.attachments.length > 0 && (() => {
-                      const firstAttachment = memo.attachments[0];
-                      const urlToResolve = typeof firstAttachment === "string"
-                        ? firstAttachment
-                        : (firstAttachment as any)?.url;
+                      const attachmentUrls = memo.attachments
+                        .map(normalizeAttachmentUrl)
+                        .filter(Boolean);
+
+                      if (attachmentUrls.length === 0) {
+                        return null;
+                      }
+
+                      const previewUrls = attachmentUrls.slice(0, 4);
+                      const remainingCount = attachmentUrls.length - previewUrls.length;
+                      const gridColumnsClass = "grid-cols-2";
 
                       return (
-                        <div className="rounded-xl overflow-hidden mb-6 shadow-sm border border-outline-variant/10">
-                          <img
-                            src={resolveAttachmentUrl(urlToResolve)}
-                            alt="Attachment"
-                            className="w-full object-cover"
-                          />
+                        <div className="mb-6">
+                          <div
+                            data-testid="memo-attachment-grid"
+                            className={`grid ${gridColumnsClass} max-w-[360px] gap-3`}
+                          >
+                            {previewUrls.map((url, index) => {
+                              const isLastPreview = index === previewUrls.length - 1;
+                              const showRemainingOverlay = remainingCount > 0 && isLastPreview;
+
+                              return (
+                                <button
+                                  key={`${memo.memoId}-${url}-${index}`}
+                                  type="button"
+                                  data-testid="memo-attachment-thumbnail"
+                                  className="group relative aspect-square overflow-hidden rounded-[20px] border border-outline-variant/10 bg-surface"
+                                  onClick={() => openLightbox(memo.memoId, attachmentUrls, index)}
+                                  aria-label={`查看第 ${index + 1} 张图片`}
+                                >
+                                  <img
+                                    src={resolveAttachmentUrl(apiUrl, url)}
+                                    alt={`Memo attachment ${index + 1}`}
+                                    className="h-full w-full object-cover transition-transform duration-200 group-hover:scale-[1.03]"
+                                  />
+                                  {showRemainingOverlay ? (
+                                    <div className="absolute inset-0 flex items-center justify-center bg-black/45 text-xl font-bold text-white">
+                                      +{remainingCount}
+                                    </div>
+                                  ) : null}
+                                </button>
+                              );
+                            })}
+                          </div>
                         </div>
                       );
                     })()}
@@ -522,6 +653,68 @@ export function DesktopInbox() {
 
         </div>
       </main>
+
+      {lightboxState ? (
+        <div
+          data-testid="memo-lightbox"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 px-6 py-10"
+          onClick={closeLightbox}
+        >
+          <button
+            type="button"
+            aria-label="关闭图片预览"
+            className="absolute right-6 top-6 rounded-full bg-white/10 p-3 text-white transition-colors hover:bg-white/20"
+            onClick={closeLightbox}
+          >
+            <X size={18} />
+          </button>
+
+          {lightboxState.attachmentUrls.length > 1 ? (
+            <>
+              <button
+                type="button"
+                aria-label="查看上一张图片"
+                className="absolute left-6 rounded-full bg-white/10 p-3 text-white transition-colors hover:bg-white/20"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  showPreviousLightboxImage();
+                }}
+              >
+                {"<"}
+              </button>
+              <button
+                type="button"
+                aria-label="查看下一张图片"
+                className="absolute right-6 top-1/2 -translate-y-1/2 rounded-full bg-white/10 p-3 text-white transition-colors hover:bg-white/20"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  showNextLightboxImage();
+                }}
+              >
+                {">"}
+              </button>
+            </>
+          ) : null}
+
+          <div
+            className="relative flex max-h-full w-full max-w-5xl flex-col items-center gap-4"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <img
+              data-testid="memo-lightbox-image"
+              src={resolveAttachmentUrl(
+                apiUrl,
+                lightboxState.attachmentUrls[lightboxState.activeIndex]
+              )}
+              alt={`Memo lightbox ${lightboxState.activeIndex + 1}`}
+              className="max-h-[80vh] w-auto max-w-full rounded-[24px] object-contain shadow-2xl"
+            />
+            <div className="rounded-full bg-white/10 px-4 py-2 text-sm font-bold text-white">
+              {lightboxState.activeIndex + 1} / {lightboxState.attachmentUrls.length}
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

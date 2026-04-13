@@ -6,7 +6,7 @@
   "scripts": {
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "build": "pnpm run typecheck",
-    "test": "vitest run src/__tests__/createQueryClient.test.ts src/__tests__/DesktopInbox.delete.test.ts"
+    "test": "vitest run --environment jsdom src/__tests__"
   },
   "dependencies": {
     "@memo-inbox/api-client": "workspace:*",

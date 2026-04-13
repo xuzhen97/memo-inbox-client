@@ -8,6 +8,7 @@ import type { PlatformBridge } from "@memo-inbox/platform-bridge";
 import { PlatformBridgeContext } from "../platform/PlatformBridgeContext";
 import { createQueryClient } from "../query/createQueryClient";
 import { ApiClientContext } from "../api/ApiClientContext";
+import { AppConfigContext } from "../config/AppConfigContext";
 
 const queryClient = createQueryClient();
 
@@ -24,10 +25,12 @@ export function AppProviders({ children, platformBridge, apiUrl, apiToken }: App
   );
 
   return (
-    <ApiClientContext.Provider value={apiClient}>
-      <PlatformBridgeContext.Provider value={platformBridge}>
-        <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
-      </PlatformBridgeContext.Provider>
-    </ApiClientContext.Provider>
+    <AppConfigContext.Provider value={{ apiUrl }}>
+      <ApiClientContext.Provider value={apiClient}>
+        <PlatformBridgeContext.Provider value={platformBridge}>
+          <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+        </PlatformBridgeContext.Provider>
+      </ApiClientContext.Provider>
+    </AppConfigContext.Provider>
   );
 }
