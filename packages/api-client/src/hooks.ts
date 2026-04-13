@@ -84,3 +84,10 @@ export function useMemoSearch(apiClient: ApiClient, input?: SearchMemosInput) {
     queryFn: () => apiClient.search.query(input),
   });
 }
+
+export function useReviewRandomMemo(apiClient: ApiClient) {
+  return useQuery({
+    queryKey: [...queryKeys.memos, "review", "random"],
+    queryFn: () => apiClient.review.random(),
+  });
+}

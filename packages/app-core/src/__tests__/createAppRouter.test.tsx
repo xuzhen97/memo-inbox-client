@@ -11,6 +11,12 @@ vi.mock("../screens/DesktopInbox", () => ({
   }
 }));
 
+vi.mock("../screens/DesktopReview", () => ({
+  DesktopReview() {
+    return <div>重温旧记忆页面</div>;
+  }
+}));
+
 vi.mock("../screens/DesktopMemoEdit", () => ({
   DesktopMemoEdit() {
     return <div>编辑这条记忆</div>;
@@ -49,6 +55,17 @@ describe("createAppRouter", () => {
     const { host, root } = await renderRouterAt("/");
 
     expect(host.textContent).toContain("桌面收件箱占位");
+
+    await act(async () => {
+      root.unmount();
+    });
+    host.remove();
+  });
+
+  it("renders DesktopReview for /review", async () => {
+    const { host, root } = await renderRouterAt("/review");
+
+    expect(host.textContent).toContain("重温旧记忆页面");
 
     await act(async () => {
       root.unmount();

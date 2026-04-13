@@ -1,11 +1,12 @@
 import * as React from "react";
-import { Search, Bell, Settings, User, Image as ImageIcon, Tag as TagIcon, Link as LinkIcon, CheckCircle2, Loader2, X } from "lucide-react";
+import { Search, Image as ImageIcon, Tag as TagIcon, Link as LinkIcon, CheckCircle2, Loader2, X } from "lucide-react";
 import { useApiClient } from "../api/ApiClientContext";
 import { useAppConfig } from "../config/AppConfigContext";
 import { useMemoList, useCreateMemo, useMemoSearch, useRemoveMemo } from "@memo-inbox/api-client";
 import type { MemoDto } from "@memo-inbox/shared-types";
 import { appNavigateEvent } from "../router/createAppRouter";
 import { formatDateTime } from "../utils/formatDateTime";
+import { DesktopShellHeader } from "../components/DesktopShellHeader";
 import {
   cancelMemoDeleteConfirmation,
   confirmMemoDelete,
@@ -256,63 +257,44 @@ export function DesktopInbox() {
   }
 
   const totalMemos = memos.length; // Use the actual derived length for UI sync
+  const inboxHeaderSlot = (
+    <div className="flex h-10 max-w-md flex-1 items-center rounded-full bg-surface-container-low px-4 transition-shadow focus-within:ring-2 focus-within:ring-primary/20">
+      <Search size={16} className="mr-2 text-on-surface-variant/40" />
+      <input
+        type="text"
+        placeholder="搜索记忆、标签或灵感..."
+        className="w-full border-none bg-transparent font-sans text-sm text-primary outline-none placeholder:text-on-surface-variant/40"
+        value={searchQuery}
+        onChange={(e) => setSearchQuery(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            const match = searchQuery.match(/(?:^|\s)#([^\s#]+)/);
+            if (match) {
+              e.preventDefault();
+              setSelectedTag(match[1]);
+              setSearchQuery(searchQuery.replace(match[0], "").trim());
+            }
+          } else if (e.key === "Backspace" && searchQuery === "" && selectedTag) {
+            setSelectedTag(undefined);
+          }
+        }}
+      />
+      {selectedTag ? (
+        <div className="ml-2 flex flex-shrink-0 items-center gap-1 rounded-md bg-primary/10 px-2 py-0.5 text-primary">
+          <span className="text-[11px] font-bold">#{selectedTag}</span>
+          <X
+            size={12}
+            className="cursor-pointer opacity-70 hover:opacity-100"
+            onClick={() => setSelectedTag(undefined)}
+          />
+        </div>
+      ) : null}
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-surface text-on-surface font-sans flex flex-col">
-      {/* Top Navigation */}
-      <header className="h-16 px-6 lg:px-10 flex items-center justify-between sticky top-0 bg-surface/90 backdrop-blur-md z-30">
-        <div className="flex items-center gap-2">
-          {/* Logo placeholder */}
-          <div className="w-8 h-8 bg-primary rounded-xl flex items-center justify-center text-white font-bold pb-0.5">M</div>
-          <span className="font-bold text-lg tracking-wide text-primary ml-1">记忆收件箱</span>
-        </div>
-
-        <div className="flex items-center gap-12 w-full max-w-3xl ml-10">
-          {/* Search bar */}
-          <div className="flex bg-surface-container-low rounded-full h-10 px-4 items-center flex-1 max-w-md focus-within:ring-2 focus-within:ring-primary/20 transition-shadow">
-            <Search size={16} className="text-on-surface-variant/40 mr-2" />
-            <input
-              type="text"
-              placeholder="搜索记忆、标签或灵感..."
-              className="bg-transparent border-none outline-none text-sm w-full font-sans placeholder:text-on-surface-variant/40 text-primary"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  const match = searchQuery.match(/(?:^|\s)#([^\s#]+)/);
-                  if (match) {
-                    e.preventDefault();
-                    setSelectedTag(match[1]);
-                    setSearchQuery(searchQuery.replace(match[0], '').trim());
-                  }
-                } else if (e.key === 'Backspace' && searchQuery === '' && selectedTag) {
-                  setSelectedTag(undefined);
-                }
-              }}
-            />
-            {selectedTag && (
-              <div className="flex items-center gap-1 bg-primary/10 text-primary px-2 py-0.5 rounded-md ml-2 flex-shrink-0">
-                <span className="text-[11px] font-bold">#{selectedTag}</span>
-                <X size={12} className="cursor-pointer opacity-70 hover:opacity-100" onClick={() => setSelectedTag(undefined)} />
-              </div>
-            )}
-          </div>
-
-          <nav className="flex gap-6 text-sm font-medium tracking-wide">
-            <span className="cursor-pointer text-primary font-bold">全部</span>
-            <span className="cursor-pointer text-on-surface-variant/50 hover:text-primary transition-colors">回顾</span>
-            <span className="cursor-pointer text-on-surface-variant/50 hover:text-primary transition-colors">归档</span>
-          </nav>
-        </div>
-
-        <div className="flex items-center gap-4 text-on-surface-variant ml-auto">
-          <Bell size={20} className="cursor-pointer hover:text-primary transition-colors" />
-          <Settings size={20} className="cursor-pointer hover:text-primary transition-colors" />
-          <div className="w-8 h-8 bg-surface-container-high rounded-full overflow-hidden border border-outline-variant/20 ml-2 shadow-sm">
-            <User size={24} className="mt-1 ml-1 opacity-50" />
-          </div>
-        </div>
-      </header>
+      <DesktopShellHeader activeTab="all" centerSlot={inboxHeaderSlot} />
 
       {/* Main Content Area */}
       <main className="flex-1 flex max-w-6xl mx-auto w-full px-6 py-10 gap-14">

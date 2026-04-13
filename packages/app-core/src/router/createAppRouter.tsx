@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { ShellHomePage } from "../screens/ShellHomePage";
 import { DesktopInbox } from "../screens/DesktopInbox";
+import { DesktopReview } from "../screens/DesktopReview";
 import { DesktopMemoEdit } from "../screens/DesktopMemoEdit";
 import { usePlatformBridge } from "../platform/PlatformBridgeContext";
 
@@ -11,6 +12,10 @@ function renderRoute(pathname: string) {
 
   if (editMatch) {
     return <DesktopMemoEdit memoId={decodeURIComponent(editMatch[1])} />;
+  }
+
+  if (pathname === "/review") {
+    return <DesktopReview />;
   }
 
   if (pathname === "/") {
