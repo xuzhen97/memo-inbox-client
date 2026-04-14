@@ -68,7 +68,11 @@ export function DesktopShellHeader({ activeTab, centerSlot }: DesktopShellHeader
 
       <div className="ml-auto flex items-center gap-4 text-on-surface-variant">
         <Bell size={20} className="cursor-pointer transition-colors hover:text-primary" />
-        <Settings size={20} className="cursor-pointer transition-colors hover:text-primary" />
+        <Settings 
+          size={20} 
+          className="cursor-pointer transition-colors hover:text-primary" 
+          onClick={() => navigateTo("/settings")}
+        />
         <div className="ml-2 h-8 w-8 overflow-hidden rounded-full border border-outline-variant/20 bg-surface-container-high shadow-sm">
           <User size={24} className="ml-1 mt-1 opacity-50" />
         </div>

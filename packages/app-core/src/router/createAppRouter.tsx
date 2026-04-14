@@ -4,6 +4,7 @@ import { DesktopInbox } from "../screens/DesktopInbox";
 import { DesktopReview } from "../screens/DesktopReview";
 import { DesktopArchive } from "../screens/DesktopArchive";
 import { DesktopMemoEdit } from "../screens/DesktopMemoEdit";
+import { DesktopSettings } from "../screens/DesktopSettings";
 import { usePlatformBridge } from "../platform/PlatformBridgeContext";
 
 export const appNavigateEvent = "memo-inbox:navigate";
@@ -23,7 +24,11 @@ function renderRoute(pathname: string) {
     return <DesktopArchive />;
   }
 
-  if (pathname === "/") {
+  if (pathname === "/settings") {
+    return <DesktopSettings />;
+  }
+
+  if (pathname === "/" || pathname === "/index.html") {
     return <DesktopInbox />;
   }
 

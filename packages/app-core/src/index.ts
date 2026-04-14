@@ -7,3 +7,4 @@ export { ApiClientContext, useApiClient } from "./api/ApiClientContext";
 export type { ApiClient } from "./api/ApiClientContext";
 export { AppConfigContext, useAppConfig } from "./config/AppConfigContext";
 export type { AppConfig } from "./config/AppConfigContext";
+export { SettingsContext, SettingsProvider, useSettings } from "./config/SettingsContext";

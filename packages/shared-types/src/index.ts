@@ -45,6 +45,13 @@ export interface TaskEventClientConfig {
   reconnect?: TaskEventReconnectOptions;
 }
 
+export interface AppSettings {
+  serviceBaseUrl: string;
+  serviceToken: string;
+  socketBaseUrl: string;
+  socketVcpKey: string;
+}
+
 export interface PlatformBridge {
   getPlatformInfo(): Promise<{
     kind: string;
@@ -54,6 +61,8 @@ export interface PlatformBridge {
   saveDraft(key: string, payload: MarkdownDocument): Promise<void>;
   loadDraft(key: string): Promise<MarkdownDocument | null>;
   removeDraft(key: string): Promise<void>;
+  getStorageItem(key: string): Promise<string | null>;
+  setStorageItem(key: string, value: string): Promise<void>;
 }
 
 export interface MemoHeader {

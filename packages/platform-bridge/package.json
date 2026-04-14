@@ -9,6 +9,8 @@
     "test": "vitest run src/__tests__/webBridge.test.ts"
   },
   "dependencies": {
-    "@memo-inbox/shared-types": "workspace:*"
+    "@capacitor/preferences": "^7.0.0-beta.0",
+    "@memo-inbox/shared-types": "workspace:*",
+    "@tauri-apps/plugin-store": "^2.2.0"
   }
 }

@@ -14,6 +14,12 @@ export function createWebPlatformBridge(): PlatformBridge {
     },
     saveDraft: draftStore.saveDraft,
     loadDraft: draftStore.loadDraft,
-    removeDraft: draftStore.removeDraft
+    removeDraft: draftStore.removeDraft,
+    async getStorageItem(key) {
+      return localStorage.getItem(key);
+    },
+    async setStorageItem(key, value) {
+      localStorage.setItem(key, value);
+    }
   };
 }

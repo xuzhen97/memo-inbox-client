@@ -9,27 +9,50 @@ import { PlatformBridgeContext } from "../platform/PlatformBridgeContext";
 import { createQueryClient } from "../query/createQueryClient";
 import { ApiClientContext } from "../api/ApiClientContext";
 import { AppConfigContext } from "../config/AppConfigContext";
+import { SettingsProvider, useSettings } from "../config/SettingsContext";
+import { usePlatformBridge } from "../platform/PlatformBridgeContext";
 
 const queryClient = createQueryClient();
 
 export interface AppProvidersProps extends PropsWithChildren {
   platformBridge: PlatformBridge;
-  apiUrl: string;
-  apiToken: string;
 }
 
-export function AppProviders({ children, platformBridge, apiUrl, apiToken }: AppProvidersProps) {
+export function AppProviders({ children, platformBridge }: AppProvidersProps) {
+  return (
+    <PlatformBridgeContext.Provider value={platformBridge}>
+      <SettingsProvider>
+        <AppProvidersInner>{children}</AppProvidersInner>
+      </SettingsProvider>
+    </PlatformBridgeContext.Provider>
+  );
+}
+
+function AppProvidersInner({ children }: PropsWithChildren) {
+  const { settings, isLoading } = useSettings();
+  
   const apiClient = useMemo(
-    () => createApiClient({ baseUrl: apiUrl, bearerToken: apiToken }),
-    [apiUrl, apiToken]
+    () => createApiClient({ 
+      baseUrl: settings.serviceBaseUrl, 
+      bearerToken: settings.serviceToken 
+    }),
+    [settings.serviceBaseUrl, settings.serviceToken]
   );
 
+  if (isLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-surface font-sans text-on-surface">
+        <div className="animate-pulse text-sm font-medium tracking-widest text-primary/40">
+          INITIALIZING...
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <AppConfigContext.Provider value={{ apiUrl }}>
+    <AppConfigContext.Provider value={{ apiUrl: settings.serviceBaseUrl }}>
       <ApiClientContext.Provider value={apiClient}>
-        <PlatformBridgeContext.Provider value={platformBridge}>
-          <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
-        </PlatformBridgeContext.Provider>
+        <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
       </ApiClientContext.Provider>
     </AppConfigContext.Provider>
   );
