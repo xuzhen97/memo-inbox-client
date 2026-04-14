@@ -32,6 +32,18 @@ export function createCapacitorPlatformBridge(): PlatformBridge {
         console.error("Capacitor Preferences error:", e);
         localStorage.setItem(key, value);
       }
+    },
+    async invokeCommand() {
+      console.warn("invokeCommand is not implemented for Capacitor");
+      throw new Error("NOT_IMPLEMENTED");
+    },
+    async showOpenDialog() {
+      console.warn("showOpenDialog is not implemented for Capacitor");
+      return null;
+    },
+    async importFlomoExport() {
+      console.warn("importFlomoExport is not implemented for Capacitor");
+      return null;
     }
   };
 }

@@ -11,6 +11,10 @@
   "dependencies": {
     "@capacitor/preferences": "^7.0.0-beta.0",
     "@memo-inbox/shared-types": "workspace:*",
-    "@tauri-apps/plugin-store": "^2.2.0"
+    "@tauri-apps/api": "2.10.1",
+    "@tauri-apps/plugin-dialog": "^2.7.0",
+    "@tauri-apps/plugin-store": "^2.2.0",
+    "@types/jszip": "^3.4.1",
+    "jszip": "^3.10.1"
   }
 }

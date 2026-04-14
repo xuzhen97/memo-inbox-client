@@ -1,7 +1,8 @@
 import { AppProviders, createAppRouter } from "@memo-inbox/app-core";
-import { createTauriPlatformBridge } from "@memo-inbox/platform-bridge";
+import { createTauriPlatformBridge, createWebPlatformBridge } from "@memo-inbox/platform-bridge";
 
-const platformBridge = createTauriPlatformBridge();
+const isTauri = typeof window !== 'undefined' && (window as any).__TAURI_INTERNALS__ !== undefined;
+const platformBridge = isTauri ? createTauriPlatformBridge() : createWebPlatformBridge();
 
 export default function App() {
   return (

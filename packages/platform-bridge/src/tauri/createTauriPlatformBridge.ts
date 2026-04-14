@@ -1,4 +1,6 @@
 import { load } from "@tauri-apps/plugin-store";
+import { open } from "@tauri-apps/plugin-dialog";
+import { invoke } from "@tauri-apps/api/core";
 import type { PlatformBridge } from "@memo-inbox/shared-types";
 import { createMemoryDraftStore } from "../core/createMemoryDraftStore";
 
@@ -38,6 +40,25 @@ export function createTauriPlatformBridge(): PlatformBridge {
         console.error("Tauri Store error:", e);
         localStorage.setItem(key, value);
       }
+    },
+    async invokeCommand(command, args) {
+      return await invoke(command, args);
+    },
+    async showOpenDialog(options) {
+      return await open({
+        multiple: options.multiple,
+        filters: options.filters
+      });
+    },
+    async importFlomoExport() {
+      const selected = await this.showOpenDialog({
+        multiple: false,
+        filters: [{ name: "ZIP Archive", extensions: ["zip"] }]
+      });
+
+      if (!selected || typeof selected !== 'string') return null;
+
+      return await this.invokeCommand<any[]>("process_flomo_export", { zipPath: selected });
     }
   };
 }

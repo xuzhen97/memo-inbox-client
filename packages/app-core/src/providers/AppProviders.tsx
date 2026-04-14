@@ -9,8 +9,9 @@ import { PlatformBridgeContext } from "../platform/PlatformBridgeContext";
 import { createQueryClient } from "../query/createQueryClient";
 import { ApiClientContext } from "../api/ApiClientContext";
 import { AppConfigContext } from "../config/AppConfigContext";
-import { SettingsProvider, useSettings } from "../config/SettingsContext";
 import { usePlatformBridge } from "../platform/PlatformBridgeContext";
+import { SettingsProvider, useSettings } from "../config/SettingsContext";
+import { TaskEventProvider } from "../api/TaskEventContext";
 
 const queryClient = createQueryClient();
 
@@ -52,7 +53,9 @@ function AppProvidersInner({ children }: PropsWithChildren) {
   return (
     <AppConfigContext.Provider value={{ apiUrl: settings.serviceBaseUrl }}>
       <ApiClientContext.Provider value={apiClient}>
-        <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+        <TaskEventProvider>
+          <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+        </TaskEventProvider>
       </ApiClientContext.Provider>
     </AppConfigContext.Provider>
   );

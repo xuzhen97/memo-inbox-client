@@ -13,6 +13,8 @@
   "dependencies": {
     "@memo-inbox/app-core": "workspace:*",
     "@memo-inbox/platform-bridge": "workspace:*",
+    "@tauri-apps/api": "^2.10.1",
+    "@tauri-apps/plugin-dialog": "^2.7.0",
     "react": "^19.1.1",
     "react-dom": "^19.1.1"
   },
