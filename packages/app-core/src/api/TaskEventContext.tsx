@@ -62,10 +62,11 @@ export function TaskEventProvider({ children }: PropsWithChildren) {
         });
       }
 
-      // Add notification for important status changes
+      // Add or update notification for important status changes
       if (status === "completed" || status === "failed") {
-        setNotifications(prev => [
-          {
+        setNotifications(prev => {
+          const existingIndex = prev.findIndex(n => n.taskId === taskId);
+          const notification = {
             id: `${taskId}-${updatedAt}`,
             taskId,
             type: taskType,
@@ -74,9 +75,16 @@ export function TaskEventProvider({ children }: PropsWithChildren) {
             message,
             timestamp: updatedAt,
             isRead: false,
-          },
-          ...prev,
-        ].slice(0, 50)); // Keep last 50
+          };
+
+          if (existingIndex >= 0) {
+            const next = [...prev];
+            next[existingIndex] = notification;
+            return next;
+          }
+
+          return [notification, ...prev].slice(0, 50);
+        });
       }
     };
 

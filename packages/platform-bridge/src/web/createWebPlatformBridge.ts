@@ -111,8 +111,8 @@ export function createWebPlatformBridge(): PlatformBridge {
             content,
             tags: tags.length > 0 ? tags : undefined,
             images: images.length > 0 ? images : undefined,
-            external_id: hash.toString(16),
-            created_at: createdAt,
+            externalId: hash.toString(16),
+            createdAt: createdAt,
           });
         }
       }

@@ -30,6 +30,16 @@ export function DesktopShellHeader({ activeTab, centerSlot }: DesktopShellHeader
 
   const activeTaskCount = Object.keys(activeTasks).length;
 
+  const getTaskTypeLabel = (type: string) => {
+    const labels: Record<string, string> = {
+      memo_import: "笔记导入",
+      memo_maintenance: "系统维护",
+      memo_reindex: "索引重建",
+      memo_reconcile: "数据对齐"
+    };
+    return labels[type] || type.toUpperCase();
+  };
+
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center justify-between bg-surface/90 px-6 backdrop-blur-md lg:px-10 border-b border-outline-variant/5">
       <div className="flex items-center gap-2">
@@ -119,7 +129,7 @@ export function DesktopShellHeader({ activeTab, centerSlot }: DesktopShellHeader
                   {Object.values(activeTasks).map(task => (
                     <div key={task.taskId} className="p-3 rounded-2xl bg-primary/5 border border-primary/10 mb-2">
                       <div className="flex justify-between items-start mb-2">
-                        <span className="text-[11px] font-bold text-primary uppercase tracking-wider">{task.taskType}</span>
+                        <span className="text-[11px] font-bold text-primary uppercase tracking-wider">{getTaskTypeLabel(task.taskType)}</span>
                         <Loader2 size={12} className="animate-spin text-primary" />
                       </div>
                       <p className="text-xs text-on-surface-variant mb-2">{task.message}</p>
@@ -141,7 +151,7 @@ export function DesktopShellHeader({ activeTab, centerSlot }: DesktopShellHeader
                         </div>
                         <div className="flex-1">
                           <div className="flex justify-between items-center mb-0.5">
-                            <span className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant/60">{n.type}</span>
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant/60">{getTaskTypeLabel(n.type)}</span>
                             <span className="text-[9px] text-on-surface-variant/30">{new Date(n.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                           </div>
                           <p className="text-xs font-medium text-on-surface">{n.message}</p>

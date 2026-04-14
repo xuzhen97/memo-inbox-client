@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Server, Globe, Key, Save, ArrowLeft, CheckCircle2, AlertCircle, Eye, EyeOff, Upload, FileArchive, Loader2 } from "lucide-react";
+import { Server, Globe, Key, Save, ArrowLeft, CheckCircle2, AlertCircle, Eye, EyeOff, Upload, FileArchive, Loader2, Database, RefreshCw } from "lucide-react";
 import { useSettings } from "../config/SettingsContext";
 import { DesktopShellHeader } from "../components/DesktopShellHeader";
 import { Button } from "@memo-inbox/ui-kit";
@@ -26,6 +26,10 @@ export function DesktopSettings() {
   const [saveStatus, setSaveStatus] = React.useState<"idle" | "success" | "error">("idle");
   const [showServiceToken, setShowServiceToken] = React.useState(false);
   const [showSocketVcpKey, setShowSocketVcpKey] = React.useState(false);
+  
+  const [isReindexing, setIsReindexing] = React.useState(false);
+  const [reindexStatus, setReindexStatus] = React.useState<"idle" | "success" | "error">("idle");
+  const [reindexMessage, setReindexMessage] = React.useState("");
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -85,6 +89,24 @@ export function DesktopSettings() {
       setImportMessage(error.message || "导入失败，请检查压缩包格式是否正确");
     } finally {
       setIsImporting(false);
+    }
+  };
+
+  const handleReindex = async () => {
+    try {
+      setIsReindexing(true);
+      setReindexStatus("idle");
+      
+      const response = await apiClient.maintenance.reindex();
+      
+      setReindexStatus("success");
+      setReindexMessage(`索引重建任务已启动 (ID: ${response.taskId})，您可以在侧边通知栏查看进度。`);
+    } catch (error: any) {
+      console.error("Reindex failed:", error);
+      setReindexStatus("error");
+      setReindexMessage(error.message || "索引重建请求失败");
+    } finally {
+      setIsReindexing(false);
     }
   };
 
@@ -264,6 +286,62 @@ export function DesktopSettings() {
                 </div>
               )}
             </div>
+          </section>
+
+          {/* Maintenance Section */}
+          <section className="bg-surface-container-low rounded-[32px] p-8 border border-outline-variant/10 shadow-sm transition-shadow hover:shadow-md">
+            <div className="flex items-center gap-3 mb-8">
+              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+                <Database size={20} />
+              </div>
+              <h2 className="text-xl font-bold text-primary">系统维护</h2>
+            </div>
+            
+            <div className="bg-surface-container-high/30 rounded-3xl p-6 flex items-center justify-between gap-6">
+              <div className="flex-1">
+                <h3 className="text-sm font-bold text-on-surface mb-1">重建全文索引</h3>
+                <p className="text-xs text-on-surface-variant/70 leading-relaxed">
+                  如果搜索结果不准确或发现笔记数量不符，点击此按钮将清理并重新扫描所有笔记文件以构建索引。
+                </p>
+              </div>
+              <Button
+                variant="outline"
+                onClick={handleReindex}
+                disabled={isReindexing}
+                className="shrink-0 rounded-xl px-6"
+              >
+                {isReindexing ? (
+                  <>
+                    <RefreshCw size={14} className="mr-2 animate-spin" />
+                    正在请求...
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw size={14} className="mr-2" />
+                    立即重建
+                  </>
+                )}
+              </Button>
+            </div>
+
+            {reindexStatus !== "idle" && (
+              <div 
+                className={`mt-6 p-4 rounded-2xl border flex items-start gap-3 animate-in fade-in slide-in-from-top-2 ${
+                  reindexStatus === 'success' ? 'bg-success/5 border-success/10 text-success' :
+                  'bg-red-50 border-red-100 text-red-600'
+                }`}
+              >
+                <div className="mt-0.5">
+                  {reindexStatus === 'success' ? <CheckCircle2 size={16} /> : <AlertCircle size={16} />}
+                </div>
+                <div className="flex-1">
+                  <p className="text-xs font-bold uppercase tracking-widest mb-1 opacity-60">
+                    {reindexStatus === 'success' ? '请求已发送' : '操作失败'}
+                  </p>
+                  <p className="text-sm font-medium leading-relaxed">{reindexMessage}</p>
+                </div>
+              </div>
+            )}
           </section>
 
           {/* Actions */}
