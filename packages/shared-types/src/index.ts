@@ -63,6 +63,12 @@ export interface PlatformBridge {
   removeDraft(key: string): Promise<void>;
   getStorageItem(key: string): Promise<string | null>;
   setStorageItem(key: string, value: string): Promise<void>;
+  invokeCommand<T>(command: string, args?: Record<string, any>): Promise<T>;
+  showOpenDialog(options: { 
+    filters?: { name: string; extensions: string[] }[],
+    multiple?: boolean 
+  }): Promise<string | string[] | null>;
+  importFlomoExport(): Promise<any[] | null>;
 }
 
 export interface MemoHeader {
@@ -107,6 +113,8 @@ export interface MemoTrashResponse {
 
 export interface MemoSearchResponse {
   items: MemoDto[];
+  nextCursor: string | null;
+  total?: number;
 }
 
 export interface MemoReviewDailyResponse extends MemoDto {
@@ -223,6 +231,7 @@ export interface SearchMemosInput {
   from?: string;
   to?: string;
   limit?: number;
+  cursor?: string;
 }
 
 export interface ImportMemoItemInput {

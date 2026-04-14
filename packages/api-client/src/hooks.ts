@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient, useInfiniteQuery } from "@tanstack/react-query";
 import type { createApiClient } from "./index";
 import { queryKeys } from "./index";
 import type { CreateMemoInput, UpdateMemoInput, SearchMemosInput } from "@memo-inbox/shared-types";
@@ -20,6 +20,15 @@ export function useMemoList(apiClient: ApiClient, input?: { limit?: number; curs
   return useQuery({
     queryKey: [...queryKeys.memos, "list", input],
     queryFn: () => apiClient.memos.list(input),
+  });
+}
+ 
+export function useInfiniteMemoList(apiClient: ApiClient, input: { limit?: number } = {}) {
+  return useInfiniteQuery({
+    queryKey: [...queryKeys.memos, "list", "infinite", input],
+    queryFn: ({ pageParam }) => apiClient.memos.list({ ...input, cursor: pageParam }),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (lastPage) => lastPage.nextCursor || undefined,
   });
 }
 
@@ -95,10 +104,27 @@ export function useMemoSearch(apiClient: ApiClient, input?: SearchMemosInput) {
     queryFn: () => apiClient.search.query(input),
   });
 }
+ 
+export function useInfiniteMemoSearch(apiClient: ApiClient, input: SearchMemosInput = {}) {
+  return useInfiniteQuery({
+    queryKey: [...queryKeys.memos, "search", "infinite", input],
+    queryFn: ({ pageParam }) => apiClient.search.query({ ...input, cursor: pageParam }),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (lastPage) => lastPage.nextCursor || undefined,
+  });
+}
 
 export function useReviewRandomMemo(apiClient: ApiClient) {
   return useQuery({
     queryKey: [...queryKeys.memos, "review", "random"],
     queryFn: () => apiClient.review.random(),
+  });
+}
+ 
+export function useMemoMaintenanceStatus(apiClient: ApiClient) {
+  return useQuery({
+    queryKey: [...queryKeys.maintenance, "status"],
+    queryFn: () => apiClient.maintenance.getStatus(),
+    refetchInterval: 30000, // Refresh every 30s
   });
 }

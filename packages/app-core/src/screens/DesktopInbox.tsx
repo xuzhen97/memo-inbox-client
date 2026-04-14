@@ -2,7 +2,7 @@ import * as React from "react";
 import { Search, Image as ImageIcon, Tag as TagIcon, Link as LinkIcon, CheckCircle2, Loader2, X } from "lucide-react";
 import { useApiClient } from "../api/ApiClientContext";
 import { useAppConfig } from "../config/AppConfigContext";
-import { useMemoList, useCreateMemo, useMemoSearch, useRemoveMemo } from "@memo-inbox/api-client";
+import { useMemoList, useCreateMemo, useMemoSearch, useRemoveMemo, useInfiniteMemoSearch, useMemoMaintenanceStatus } from "@memo-inbox/api-client";
 import type { MemoDto } from "@memo-inbox/shared-types";
 import { appNavigateEvent } from "../router/createAppRouter";
 import { formatDateTime } from "../utils/formatDateTime";
@@ -69,19 +69,45 @@ export function DesktopInbox() {
   } | null>(null);
 
   const apiClient = useApiClient();
-
-  // Normal list
-  const { data: memoListData, isLoading: isListLoading } = useMemoList(apiClient);
+  const { data: maintenanceStatus } = useMemoMaintenanceStatus(apiClient);
 
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
 
-  // Search results
-  const { data: searchData, isLoading: isSearchLoading } = useMemoSearch(apiClient, {
+  // Infinite scroll search results
+  const {
+    data: infiniteSearchData,
+    isLoading: isSearchLoading,
+    isFetchingNextPage,
+    fetchNextPage,
+    hasNextPage
+  } = useInfiniteMemoSearch(apiClient, {
     q: debouncedSearchQuery || undefined,
     tag: selectedTag,
-    from: activeFilter === 'today' ? todayStart.toISOString() : undefined
+    from: activeFilter === 'today' ? todayStart.toISOString() : undefined,
+    limit: 20
   });
+
+  // Intersection Observer for Infinite Scroll
+  const loadMoreRef = React.useRef<HTMLDivElement>(null);
+  React.useEffect(() => {
+    if (!hasNextPage || isFetchingNextPage) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          fetchNextPage();
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    if (loadMoreRef.current) {
+      observer.observe(loadMoreRef.current);
+    }
+
+    return () => observer.disconnect();
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   const { mutateAsync: createMemo, isPending: isCreating } = useCreateMemo(apiClient);
   const { mutateAsync: removeMemo, isPending: isRemoving } = useRemoveMemo(apiClient);
@@ -249,14 +275,19 @@ export function DesktopInbox() {
 
   const activeTags = ["工作", "日常", "灵感", "阅读", "设计"];
 
-  const isLoading = isSearchLoading;
+  const isLoading = isSearchLoading && !infiniteSearchData;
 
-  let memos: MemoDto[] = searchData?.items || [];
+  let memos: MemoDto[] = infiniteSearchData?.pages.flatMap(page => page.items) || [];
   if (activeFilter === 'has_image') {
     memos = memos.filter(m => m.attachments && m.attachments.length > 0);
   }
 
-  const totalMemos = memos.length; // Use the actual derived length for UI sync
+  const totalMemosInView = memos.length;
+  const realTotalMemos = maintenanceStatus?.memoCount ?? 0;
+  const displayTotal = (debouncedSearchQuery || selectedTag || activeFilter !== 'all')
+    ? totalMemosInView
+    : realTotalMemos;
+
   const inboxHeaderSlot = (
     <div className="flex h-10 max-w-md flex-1 items-center rounded-full bg-surface-container-low px-4 transition-shadow focus-within:ring-2 focus-within:ring-primary/20">
       <Search size={16} className="mr-2 text-on-surface-variant/40" />
@@ -573,6 +604,16 @@ export function DesktopInbox() {
                 );
               })
             )}
+
+            {hasNextPage && (
+              <div ref={loadMoreRef} className="flex justify-center py-8">
+                {isFetchingNextPage ? (
+                  <Loader2 size={20} className="animate-spin text-primary/40" />
+                ) : (
+                  <div className="h-4 w-4" />
+                )}
+              </div>
+            )}
           </div>
         </div>
 
@@ -583,7 +624,7 @@ export function DesktopInbox() {
           <section className="bg-surface-container-low rounded-[24px] p-7 border border-outline-variant/10">
             <h3 className="text-[10px] font-bold tracking-widest uppercase text-on-surface-variant/40 mb-2">概览</h3>
             <div className="flex items-baseline gap-2">
-              <span className="text-5xl font-serif font-bold italic text-primary">{isListLoading ? "-" : totalMemos}</span>
+              <span className="text-5xl font-serif font-bold italic text-primary">{isLoading ? "-" : displayTotal}</span>
               <span className="text-xs text-on-surface-variant font-medium tracking-wide">
                 {debouncedSearchQuery || selectedTag
                   ? "条相关搜索结果"
