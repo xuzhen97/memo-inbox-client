@@ -122,6 +122,7 @@ export function createApiClient(config: MemoInboxClientConfig) {
             tag: input.tag,
             from: input.from,
             to: input.to,
+            hasImage: input.hasImage,
             limit: input.limit,
             cursor: input.cursor
           }

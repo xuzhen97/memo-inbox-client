@@ -85,6 +85,7 @@ export function DesktopInbox() {
     q: debouncedSearchQuery || undefined,
     tag: selectedTag,
     from: activeFilter === 'today' ? todayStart.toISOString() : undefined,
+    hasImage: activeFilter === 'has_image',
     limit: 20
   });
 
@@ -278,14 +279,11 @@ export function DesktopInbox() {
   const isLoading = isSearchLoading && !infiniteSearchData;
 
   let memos: MemoDto[] = infiniteSearchData?.pages.flatMap(page => page.items) || [];
-  if (activeFilter === 'has_image') {
-    memos = memos.filter(m => m.attachments && m.attachments.length > 0);
-  }
 
-  const totalMemosInView = memos.length;
+  const apiTotal = infiniteSearchData?.pages[0]?.total;
   const realTotalMemos = maintenanceStatus?.memoCount ?? 0;
   const displayTotal = (debouncedSearchQuery || selectedTag || activeFilter !== 'all')
-    ? totalMemosInView
+    ? (apiTotal ?? memos.length)
     : realTotalMemos;
 
   const inboxHeaderSlot = (

@@ -230,6 +230,7 @@ export interface SearchMemosInput {
   tag?: string;
   from?: string;
   to?: string;
+  hasImage?: boolean;
   limit?: number;
   cursor?: string;
 }
