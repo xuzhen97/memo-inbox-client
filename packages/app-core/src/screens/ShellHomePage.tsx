@@ -62,7 +62,7 @@ export function ShellHomePage() {
       <div className="shell-home__inner">
         <section className="shell-home__hero">
           <p className="shell-home__eyebrow">Architecture Shell</p>
-          <h1 className="shell-home__title">Memo Inbox Client</h1>
+          <h1 className="shell-home__title">记忆收件箱</h1>
           <p className="shell-home__summary">
             当前首页只用于验证三端入口、平台桥与共享装配链路，尚未接入任何 memo 业务功能。
           </p>

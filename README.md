@@ -97,7 +97,7 @@ pnpm --filter "@memo-inbox/desktop" tauri build
 
 本次实际产物路径：
 
-- 安装包：`apps/desktop/src-tauri/target/release/bundle/nsis/Memo Inbox Client_0.1.0_x64-setup.exe`
+- 安装包：`apps/desktop/src-tauri/target/release/bundle/nsis/记忆收件箱_0.1.0_x64-setup.exe`
 - 原始可执行文件：`apps/desktop/src-tauri/target/release/memo-inbox-client-desktop.exe`
 
 ### Android APK
