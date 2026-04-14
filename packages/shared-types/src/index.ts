@@ -50,6 +50,7 @@ export interface AppSettings {
   serviceToken: string;
   socketBaseUrl: string;
   socketVcpKey: string;
+  followedTags?: string[];
 }
 
 export interface PlatformBridge {

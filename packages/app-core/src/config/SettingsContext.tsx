@@ -16,6 +16,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   serviceToken: "development-token",
   socketBaseUrl: "http://127.0.0.1:6005",
   socketVcpKey: "vcp-key-placeholder",
+  followedTags: [],
 };
 
 export const SettingsContext = createContext<SettingsContextValue | null>(null);

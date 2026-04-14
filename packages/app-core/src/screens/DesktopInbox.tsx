@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Search, Image as ImageIcon, Tag as TagIcon, Link as LinkIcon, CheckCircle2, Loader2, X } from "lucide-react";
+import { Search, Image as ImageIcon, Tag as TagIcon, Link as LinkIcon, CheckCircle2, Loader2, X, Plus } from "lucide-react";
 import { useApiClient } from "../api/ApiClientContext";
 import { useAppConfig } from "../config/AppConfigContext";
 import { useMemoList, useCreateMemo, useMemoSearch, useRemoveMemo, useInfiniteMemoSearch, useMemoMaintenanceStatus } from "@memo-inbox/api-client";
@@ -7,6 +7,7 @@ import type { MemoDto } from "@memo-inbox/shared-types";
 import { appNavigateEvent } from "../router/createAppRouter";
 import { formatDateTime } from "../utils/formatDateTime";
 import { DesktopShellHeader } from "../components/DesktopShellHeader";
+import { useSettings } from "../config/SettingsContext";
 import {
   cancelMemoDeleteConfirmation,
   confirmMemoDelete,
@@ -53,6 +54,11 @@ export function DesktopInbox() {
   const [selectedFiles, setSelectedFiles] = React.useState<File[]>([]);
   const [imagePreviews, setImagePreviews] = React.useState<string[]>([]);
   const tagInputRef = React.useRef<HTMLInputElement>(null);
+  const followTagInputRef = React.useRef<HTMLInputElement>(null);
+
+  const { settings, updateSettings } = useSettings();
+  const [showFollowTagInput, setShowFollowTagInput] = React.useState(false);
+  const [followTagInputValue, setFollowTagInputValue] = React.useState("");
 
   const [searchQuery, setSearchQuery] = React.useState("");
   const [selectedTag, setSelectedTag] = React.useState<string | undefined>();
@@ -210,6 +216,31 @@ export function DesktopInbox() {
     window.history.pushState({}, "", `/memos/${encodeURIComponent(memoId)}/edit`);
     window.dispatchEvent(new Event(appNavigateEvent));
   };
+  
+  const handleAddFollowTag = async (raw: string) => {
+    const tag = raw.replace(/^#+/, '').trim();
+    if (!tag) return;
+    
+    const currentTags = settings.followedTags || [];
+    if (currentTags.includes(tag)) return;
+    
+    await updateSettings({
+      followedTags: [...currentTags, tag]
+    });
+    setFollowTagInputValue("");
+    setShowFollowTagInput(false);
+  };
+  
+  const handleRemoveFollowTag = async (tag: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const currentTags = settings.followedTags || [];
+    await updateSettings({
+      followedTags: currentTags.filter(t => t !== tag)
+    });
+    if (selectedTag === tag) {
+      setSelectedTag(undefined);
+    }
+  };
 
   const openLightbox = (memoId: string, attachmentUrls: string[], activeIndex: number) => {
     setLightboxState({
@@ -274,7 +305,7 @@ export function DesktopInbox() {
     };
   }, [lightboxState]);
 
-  const activeTags = ["工作", "日常", "灵感", "阅读", "设计"];
+  const followedTags = settings.followedTags || [];
 
   const isLoading = isSearchLoading && !infiniteSearchData;
 
@@ -636,25 +667,84 @@ export function DesktopInbox() {
             </div>
           </section>
 
-          {/* Active Tags */}
+          {/* Followed Tags */}
           <section className="bg-surface-container-low rounded-[24px] p-7 border border-outline-variant/10">
-            <h3 className="text-[10px] font-bold tracking-widest uppercase text-on-surface-variant/40 mb-5">活跃标签</h3>
+            <div className="flex items-center justify-between mb-5">
+              <h3 className="text-[10px] font-bold tracking-widest uppercase text-on-surface-variant/40">关注标签</h3>
+              <button 
+                onClick={() => {
+                  setShowFollowTagInput(true);
+                  setTimeout(() => followTagInputRef.current?.focus(), 50);
+                }}
+                className="text-on-surface-variant/40 hover:text-primary transition-colors"
+                title="添加关注标签"
+              >
+                <Plus size={14} />
+              </button>
+            </div>
             <div className="flex flex-wrap gap-2.5">
-              {activeTags.map((tag) => {
+              {followedTags.length === 0 && !showFollowTagInput && (
+                <p className="text-[11px] text-on-surface-variant/30 font-medium italic">暂无关注标签</p>
+              )}
+              {followedTags.map((tag) => {
                 const isActive = selectedTag === tag;
                 return (
                   <button
                     key={tag}
                     onClick={() => toggleTag(tag)}
-                    className={`px-4 py-2 text-xs font-bold rounded-xl transition-colors border border-outline-variant/5 ${isActive
-                      ? "bg-primary text-white shadow-md shadow-primary/10"
-                      : "bg-surface-container/60 hover:bg-surface-container text-on-surface-variant"
+                    className={`group relative px-4 py-2 text-xs font-bold rounded-xl transition-all border border-outline-variant/5 ${isActive
+                      ? "bg-primary text-white shadow-md shadow-primary/10 pl-4 pr-4"
+                      : "bg-surface-container/60 hover:bg-surface-container text-on-surface-variant hover:pr-8"
                       }`}
                   >
                     #{tag}
+                    {!isActive && (
+                      <span 
+                        onClick={(e) => handleRemoveFollowTag(tag, e)}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity p-0.5 hover:bg-black/5 rounded-full"
+                      >
+                       <X size={10} />
+                      </span>
+                    )}
+                    {isActive && (
+                      <span 
+                        onClick={(e) => handleRemoveFollowTag(tag, e)}
+                        className="ml-2 opacity-60 hover:opacity-100 transition-opacity"
+                      >
+                       <X size={10} />
+                      </span>
+                    )}
                   </button>
                 );
               })}
+              {showFollowTagInput && (
+                <div className="w-full mt-1">
+                  <input
+                    ref={followTagInputRef}
+                    type="text"
+                    value={followTagInputValue}
+                    onChange={(e) => setFollowTagInputValue(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        handleAddFollowTag(followTagInputValue);
+                      } else if (e.key === 'Escape') {
+                        setShowFollowTagInput(false);
+                        setFollowTagInputValue("");
+                      }
+                    }}
+                    onBlur={() => {
+                      if (followTagInputValue) {
+                        handleAddFollowTag(followTagInputValue);
+                      } else {
+                        setShowFollowTagInput(false);
+                      }
+                    }}
+                    placeholder="输入标签名..."
+                    className="w-full bg-surface-container/40 border border-primary/20 rounded-xl px-3 py-2 text-xs text-primary focus:outline-none focus:ring-1 focus:ring-primary/30"
+                    autoFocus
+                  />
+                </div>
+              )}
             </div>
           </section>
 
