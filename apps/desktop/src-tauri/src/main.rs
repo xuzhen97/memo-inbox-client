@@ -117,6 +117,7 @@ async fn process_flomo_export(zip_path: String) -> Result<Vec<FlomoImportItem>, 
 
 fn main() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_store::Builder::default().build())
         .invoke_handler(tauri::generate_handler![process_flomo_export])
         .run(tauri::generate_context!())

@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "记忆收件箱",
+  "productName": "MemoInbox",
   "version": "0.1.0",
   "identifier": "com.xuzhen97.memoInboxClient",
   "build": {
