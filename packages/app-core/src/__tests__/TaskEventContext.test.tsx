@@ -2,29 +2,40 @@ import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 
-import type { MemoTaskEvent } from "@memo-inbox/shared-types";
+import type { MemoTaskEvent, TaskEventClientConfig } from "@memo-inbox/shared-types";
 
 import { TaskEventProvider, useTaskEvents } from "../api/TaskEventContext";
 import { SettingsContext } from "../config/SettingsContext";
 
-const connectMock = vi.fn();
-const disconnectMock = vi.fn();
-const onMock = vi.fn();
-const offMock = vi.fn();
-const subscribeTaskMock = vi.fn();
-const unsubscribeTaskMock = vi.fn();
+const taskEventClientMocks = vi.hoisted(() => {
+  const connectMock = vi.fn();
+  const disconnectMock = vi.fn();
+  const onMock = vi.fn();
+  const offMock = vi.fn();
+  const subscribeTaskMock = vi.fn();
+  const unsubscribeTaskMock = vi.fn();
+  const createTaskEventClientMock = vi.fn((_config: TaskEventClientConfig) => ({
+    connect: connectMock,
+    disconnect: disconnectMock,
+    on: onMock,
+    off: offMock,
+    subscribeTask: subscribeTaskMock,
+    unsubscribeTask: unsubscribeTaskMock,
+  }));
 
-const createTaskEventClientMock = vi.fn(() => ({
-  connect: connectMock,
-  disconnect: disconnectMock,
-  on: onMock,
-  off: offMock,
-  subscribeTask: subscribeTaskMock,
-  unsubscribeTask: unsubscribeTaskMock,
-}));
+  return {
+    connectMock,
+    disconnectMock,
+    onMock,
+    offMock,
+    subscribeTaskMock,
+    unsubscribeTaskMock,
+    createTaskEventClientMock,
+  };
+});
 
 vi.mock("@memo-inbox/api-client", () => ({
-  createTaskEventClient: (...args: unknown[]) => createTaskEventClientMock(...args),
+  createTaskEventClient: taskEventClientMocks.createTaskEventClientMock,
 }));
 
 function Probe() {
@@ -76,20 +87,20 @@ async function renderProvider() {
 
 describe("TaskEventProvider", () => {
   beforeEach(() => {
-    connectMock.mockReset();
-    disconnectMock.mockReset();
-    onMock.mockReset();
-    offMock.mockReset();
-    subscribeTaskMock.mockReset();
-    unsubscribeTaskMock.mockReset();
-    createTaskEventClientMock.mockClear();
-    connectMock.mockResolvedValue(undefined);
+    taskEventClientMocks.connectMock.mockReset();
+    taskEventClientMocks.disconnectMock.mockReset();
+    taskEventClientMocks.onMock.mockReset();
+    taskEventClientMocks.offMock.mockReset();
+    taskEventClientMocks.subscribeTaskMock.mockReset();
+    taskEventClientMocks.unsubscribeTaskMock.mockReset();
+    taskEventClientMocks.createTaskEventClientMock.mockClear();
+    taskEventClientMocks.connectMock.mockResolvedValue(undefined);
   });
 
   it("uses socketBaseUrl to create the websocket client", async () => {
     const view = await renderProvider();
 
-    expect(createTaskEventClientMock).toHaveBeenCalledWith(
+    expect(taskEventClientMocks.createTaskEventClientMock).toHaveBeenCalledWith(
       expect.objectContaining({
         baseUrl: "http://127.0.0.1:7001",
         vcpKey: "socket-key",
@@ -111,7 +122,7 @@ describe("TaskEventProvider", () => {
       );
     });
 
-    expect(subscribeTaskMock).toHaveBeenCalledWith("task-1");
+    expect(taskEventClientMocks.subscribeTaskMock).toHaveBeenCalledWith("task-1");
 
     await act(async () => {
       view.host.querySelector('button[aria-label="unregister-task"]')?.dispatchEvent(
@@ -119,7 +130,7 @@ describe("TaskEventProvider", () => {
       );
     });
 
-    expect(unsubscribeTaskMock).toHaveBeenCalledWith("task-1");
+    expect(taskEventClientMocks.unsubscribeTaskMock).toHaveBeenCalledWith("task-1");
 
     await act(async () => {
       view.root.unmount();
@@ -129,7 +140,7 @@ describe("TaskEventProvider", () => {
 
   it("treats cancelled events as terminal notifications", async () => {
     const view = await renderProvider();
-    const handler = onMock.mock.calls.find((call) => call[0] === "memo_task_cancelled")?.[1] as
+    const handler = taskEventClientMocks.onMock.mock.calls.find((call) => call[0] === "memo_task_cancelled")?.[1] as
       | ((event: MemoTaskEvent) => void)
       | undefined;
 

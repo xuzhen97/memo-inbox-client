@@ -16,7 +16,7 @@ export function TestProviders({ children }: { children: ReactNode }) {
         removeDraft: async () => {},
         getStorageItem: async () => null,
         setStorageItem: async () => {},
-        invokeCommand: async () => ({}),
+        invokeCommand: async <T,>() => undefined as T,
         showOpenDialog: async () => null,
         importFlomoExport: async () => null,
       }}

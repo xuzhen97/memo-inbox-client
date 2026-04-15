@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { act } from "react";
 import { createRoot } from "react-dom/client";
+import type { PlatformBridge } from "@memo-inbox/shared-types";
 
 import { PlatformBridgeContext } from "../platform/PlatformBridgeContext";
 import { createAppRouter } from "../router/createAppRouter";
@@ -23,12 +24,19 @@ vi.mock("../screens/DesktopMemoEdit", () => ({
   }
 }));
 
-function createPlatformBridge() {
+function createPlatformBridge(): PlatformBridge {
+  const invokeCommand: PlatformBridge["invokeCommand"] = async <T,>() => undefined as T;
+
   return {
     getPlatformInfo: vi.fn().mockResolvedValue({ kind: "desktop", runtime: "test" }),
     saveDraft: vi.fn(),
     loadDraft: vi.fn(),
-    removeDraft: vi.fn()
+    removeDraft: vi.fn(),
+    getStorageItem: vi.fn().mockResolvedValue(null),
+    setStorageItem: vi.fn(),
+    invokeCommand,
+    showOpenDialog: vi.fn().mockResolvedValue(null),
+    importFlomoExport: vi.fn().mockResolvedValue(null),
   };
 }
 

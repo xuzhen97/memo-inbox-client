@@ -5,11 +5,7 @@ const platformBridge = createCapacitorPlatformBridge();
 
 export default function App() {
   return (
-    <AppProviders
-      platformBridge={platformBridge}
-      apiUrl={import.meta.env.VITE_API_URL || "http://localhost:3000"}
-      apiToken={import.meta.env.VITE_API_TOKEN || "development-token"}
-    >
+    <AppProviders platformBridge={platformBridge}>
       {createAppRouter()}
     </AppProviders>
   );

@@ -4,7 +4,7 @@ import { useApiClient } from "../api/ApiClientContext";
 import { useAppConfig } from "../config/AppConfigContext";
 import { useCreateMemo, useRemoveMemo, useInfiniteMemoList } from "@memo-inbox/api-client";
 import type { MemoDto } from "@memo-inbox/shared-types";
-import { getMobileTimeLabel, getRelativeDayLabel } from "../utils/mobileTimeFormat";
+import { formatDateTime } from "../utils/formatDateTime";
 import { appNavigateEvent } from "../router/createAppRouter";
 import { cancelMemoDeleteConfirmation, confirmMemoDelete, openMemoDeleteConfirmation } from "./memoDeleteState";
 import { useSettings } from "../config/SettingsContext";
@@ -44,6 +44,10 @@ export function MobileInbox() {
   const [showTagInput, setShowTagInput] = React.useState(false);
   const [selectedFiles, setSelectedFiles] = React.useState<File[]>([]);
   const [imagePreviews, setImagePreviews] = React.useState<string[]>([]);
+  const revokePreviewUrls = React.useCallback((urls: string[]) => {
+    urls.forEach((url) => URL.revokeObjectURL(url));
+  }, []);
+  const imagePreviewsRef = React.useRef<string[]>([]);
   
   const [searchQuery, setSearchQuery] = React.useState("");
   const [selectedTag, setSelectedTag] = React.useState<string | undefined>();
@@ -196,6 +200,7 @@ export function MobileInbox() {
       setTagInputValue("");
       setShowTagInput(false);
       setSelectedFiles([]);
+      revokePreviewUrls(imagePreviews);
       setImagePreviews([]);
       // You could optionally show a toast here "已写入记忆"
     } catch (e) {
@@ -245,6 +250,16 @@ export function MobileInbox() {
     if (loadMoreRef.current) observer.observe(loadMoreRef.current);
     return () => observer.disconnect();
   }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
+
+  React.useEffect(() => {
+    imagePreviewsRef.current = imagePreviews;
+  }, [imagePreviews]);
+
+  React.useEffect(() => {
+    return () => {
+      revokePreviewUrls(imagePreviewsRef.current);
+    };
+  }, [revokePreviewUrls]);
 
   const touchStartX = React.useRef<number | null>(null);
 
@@ -386,8 +401,6 @@ export function MobileInbox() {
   let memos: MemoDto[] = infiniteSearchData?.pages.flatMap(page => page.items) || [];
   
   // Custom grouping logic for mobile
-  let lastRelativeDay = "";
-
   return (
     <div
       ref={contentRef}
@@ -633,38 +646,19 @@ export function MobileInbox() {
             <Loader2 size={24} className="animate-spin text-primary" />
           </div>
         ) : memos.map((memo, idx) => {
-          let timeLabelStr = getMobileTimeLabel(memo.createdAt);
-          const currentRelativeDay = getRelativeDayLabel(memo.createdAt);
-          
-          if (currentRelativeDay !== "今日") {
-            // For yesterday, week days etc. Replace timeLabel with relative day if it's the first one, or omit maybe? 
-            // Based on design, it just prints "昨日", "周三", etc.
-            // Wait, does it print "周三" for EVERY memo that day? The prototype looks like it prints the label on the left.
-            if (currentRelativeDay !== lastRelativeDay) {
-               timeLabelStr = currentRelativeDay;
-               lastRelativeDay = currentRelativeDay;
-            } else {
-               timeLabelStr = ""; // Hide if it's the same day to make it cleaner? But design shows "昨日" then under it "周三"? Let's just output it if needed or empty space.
-               // Actually prototype shows "昨日", and then a big gap, and then "周三" for the next group. For simplicity I'll print the relative day for the first item of that day.
-            }
-          } else {
-             // It's today, show time
-             timeLabelStr = getMobileTimeLabel(memo.createdAt);
-             lastRelativeDay = "今日";
-          }
-
           const hasImages = memo.attachments && memo.attachments.length > 0;
           
           return (
-            <div key={memo.memoId} className="flex gap-5 relative">
-              {/* Left Column - Time/Date Label */}
-              <div className="w-[52px] flex-shrink-0 text-[11px] font-bold text-on-surface-variant/40 tracking-wider pt-1 uppercase text-right">
-                {timeLabelStr}
+            <div key={memo.memoId} data-testid="mobile-memo-row" className="flex flex-col gap-2 relative">
+              <div
+                data-testid="mobile-memo-datetime"
+                className="text-[12px] font-medium text-on-surface-variant/45 tracking-[0.02em]"
+              >
+                {formatDateTime(memo.createdAt)}
               </div>
 
-              {/* Right Column - Content */}
-              <div className="flex-1 flex flex-col pt-0.5">
-                <p className="text-[15px] leading-[1.8] text-[#2C2C2C] mb-3 whitespace-pre-wrap font-sans">
+              <div data-testid="mobile-memo-content" className="min-w-0 flex flex-col">
+                <p data-testid="mobile-memo-text" className="text-[15px] leading-[1.8] text-[#2C2C2C] mb-3 whitespace-pre-wrap break-words [overflow-wrap:anywhere] font-sans">
                   {memo.content}
                 </p>
 
@@ -677,8 +671,8 @@ export function MobileInbox() {
                   const gridColsClass = previewUrls.length === 1 ? "grid-cols-1" : "grid-cols-2";
 
                   return (
-                    <div className="mb-4">
-                      <div className={`grid ${gridColsClass} max-w-[280px] gap-2`}>
+                    <div className="mb-4 max-w-full">
+                      <div data-testid="mobile-memo-attachments" className={`grid ${gridColsClass} max-w-full gap-2`}>
                         {previewUrls.map((url, index) => {
                           const isLastPreview = index === previewUrls.length - 1;
                           const showRemainingOverlay = remainingCount > 0 && isLastPreview;
@@ -708,7 +702,7 @@ export function MobileInbox() {
                 })()}
 
                 {memo.tags && memo.tags.length > 0 && (
-                  <div className="flex flex-wrap gap-2 mb-2">
+                  <div data-testid="mobile-memo-tags" className="flex flex-wrap gap-2 mb-2">
                     {memo.tags.map(tag => (
                       <button 
                         key={tag} 
@@ -725,9 +719,9 @@ export function MobileInbox() {
                   </div>
                 )}
                 
-                <div className="flex justify-end items-center gap-3 mt-1">
+                <div data-testid="mobile-memo-actions" className="flex min-w-0 flex-wrap justify-end items-center gap-3 mt-1">
                   {pendingDeleteMemoId === memo.memoId ? (
-                     <div className="flex items-center gap-2">
+                     <div data-testid="mobile-memo-delete-actions" className="flex min-w-0 flex-wrap items-center gap-2">
                         <span className="text-[10px] text-red-500 mr-1">移入回收站?</span>
                         <button onClick={() => void handleDeleteConfirm(memo.memoId)} disabled={isRemoving} className="text-[11px] bg-red-100 text-red-600 px-3 py-1 rounded-full font-bold">确定</button>
                         <button onClick={handleDeleteCancel} disabled={isRemoving} className="text-[11px] bg-surface-container text-on-surface-variant px-3 py-1 rounded-full font-bold">取消</button>
