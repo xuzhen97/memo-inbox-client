@@ -106,20 +106,11 @@ export interface MemoDto {
 export interface MemoListResponse {
   items: MemoDto[];
   nextCursor: string | null;
+  total: number;
 }
 
 export interface MemoTrashResponse {
   items: MemoDto[];
-}
-
-export interface MemoSearchResponse {
-  items: MemoDto[];
-  nextCursor: string | null;
-  total?: number;
-}
-
-export interface MemoReviewDailyResponse extends MemoDto {
-  reviewReason: string;
 }
 
 export type MemoTaskStatus = "accepted" | "running" | "completed" | "failed" | "cancelled";
@@ -175,28 +166,6 @@ export interface MemoTaskEvent {
   };
 }
 
-export interface MemoTaskSummary {
-  total: number;
-  accepted: number;
-  running: number;
-  completed: number;
-  failed: number;
-  cancelled: number;
-}
-
-export interface MemoMaintenanceStatus {
-  memoCount: number;
-  trashCount: number;
-  attachmentCount: number;
-  indexCount: number;
-  taskSummary: MemoTaskSummary;
-  paths: {
-    memoRootPath: string;
-    memoTrashPath: string;
-    memoImageRootPath: string;
-  };
-}
-
 export interface MemoSystemStatus {
   status: string;
   plugin: string;
@@ -224,16 +193,11 @@ export interface UpdateMemoInput {
 export interface ListMemosInput {
   limit?: number;
   cursor?: string;
-}
-
-export interface SearchMemosInput {
   q?: string;
   tag?: string;
   from?: string;
   to?: string;
   hasImage?: boolean;
-  limit?: number;
-  cursor?: string;
 }
 
 export interface ImportMemoItemInput {

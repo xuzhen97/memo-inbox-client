@@ -3,12 +3,10 @@ import type {
   AppError,
   CreateImportTaskInput,
   CreateMemoInput,
+  ListMemosInput,
   MemoDto,
   MemoInboxClientConfig,
   MemoListResponse,
-  MemoMaintenanceStatus,
-  MemoReviewDailyResponse,
-  MemoSearchResponse,
   MemoSystemStatus,
   MemoTaskAcceptedResponse,
   MemoTaskDto,
@@ -16,14 +14,12 @@ import type {
   MemoTaskEventType,
   MemoTaskErrorsResponse,
   TaskEventClientConfig,
-  SearchMemosInput,
   UpdateMemoInput
 } from "@memo-inbox/shared-types";
 
 export const queryKeys = {
   memos: ["memos"] as const,
-  tasks: ["tasks"] as const,
-  maintenance: ["maintenance"] as const
+  tasks: ["tasks"] as const
 };
 
 interface ResolvedMemoInboxClientConfig {
@@ -103,34 +99,24 @@ export function createApiClient(config: MemoInboxClientConfig) {
         requestJson<void>(resolved, `/memos/${encodeURIComponent(memoId)}/purge`, {
           method: "DELETE"
         }),
-      list: (input: { limit?: number; cursor?: string } = {}) =>
+      list: (input: ListMemosInput = {}) =>
         requestJson<MemoListResponse>(resolved, "/memos", {
           query: {
             limit: input.limit,
-            cursor: input.cursor
+            cursor: input.cursor,
+            q: input.q,
+            tag: input.tag,
+            from: input.from,
+            to: input.to,
+            hasImage: input.hasImage
           }
         })
     },
     trash: {
       list: () => requestJson<{ items: MemoDto[] }>(resolved, "/trash")
     },
-    search: {
-      query: (input: SearchMemosInput = {}) =>
-        requestJson<MemoSearchResponse>(resolved, "/search", {
-          query: {
-            q: input.q,
-            tag: input.tag,
-            from: input.from,
-            to: input.to,
-            hasImage: input.hasImage,
-            limit: input.limit,
-            cursor: input.cursor
-          }
-        })
-    },
     review: {
-      random: () => requestJson<MemoDto>(resolved, "/review/random"),
-      daily: () => requestJson<MemoReviewDailyResponse>(resolved, "/review/daily")
+      random: () => requestJson<MemoDto>(resolved, "/review/random")
     },
     imports: {
       create: (input: CreateImportTaskInput) =>
@@ -145,17 +131,6 @@ export function createApiClient(config: MemoInboxClientConfig) {
         requestJson<MemoTaskErrorsResponse>(resolved, `/tasks/${encodeURIComponent(taskId)}/errors`),
       cancel: (taskId: string) =>
         requestJson<MemoTaskDto>(resolved, `/tasks/${encodeURIComponent(taskId)}/cancel`, {
-          method: "POST"
-        })
-    },
-    maintenance: {
-      getStatus: () => requestJson<MemoMaintenanceStatus>(resolved, "/maintenance/status"),
-      reindex: () =>
-        requestJson<MemoTaskAcceptedResponse>(resolved, "/maintenance/reindex", {
-          method: "POST"
-        }),
-      reconcile: () =>
-        requestJson<MemoTaskAcceptedResponse>(resolved, "/maintenance/reconcile", {
           method: "POST"
         })
     },
@@ -391,7 +366,7 @@ async function requestJson<T>(
   };
 
   if (options.body !== undefined) {
-    if (options.body instanceof FormData) {
+    if (isFormDataLike(options.body)) {
       init.body = options.body;
       headers.delete("Content-Type");
     } else if (typeof options.body === "string" || options.body instanceof Blob) {
@@ -448,22 +423,22 @@ function buildCreateMemoBody(input: CreateMemoInput): FormData | Record<string, 
 
   if (input.files && input.files.length > 0) {
     const formData = new FormData();
-    formData.set("content", input.content);
+    formData.append("content", input.content);
 
-    if (input.tags) {
-      formData.set("tags", JSON.stringify(input.tags));
+    if (input.tags && input.tags.length > 0) {
+      formData.append("tags", JSON.stringify(input.tags));
     }
 
     if (input.source) {
-      formData.set("source", input.source);
+      formData.append("source", input.source);
     }
 
     if (input.imageUrls) {
-      formData.set("imageUrls", JSON.stringify(input.imageUrls));
+      formData.append("imageUrls", JSON.stringify(input.imageUrls));
     }
 
     if (input.imageBase64) {
-      formData.set("imageBase64", JSON.stringify(input.imageBase64));
+      formData.append("imageBase64", JSON.stringify(input.imageBase64));
     }
 
     for (const file of input.files) {
@@ -511,6 +486,23 @@ function buildUpdateMemoBody(input: UpdateMemoInput): FormData | Record<string, 
   }
 
   return formData;
+}
+
+function isFormDataLike(value: unknown): value is FormData {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+
+  if (typeof FormData !== "undefined" && value instanceof FormData) {
+    return true;
+  }
+
+  const formDataLike = value as { append?: unknown; entries?: unknown; [Symbol.toStringTag]?: unknown };
+  return (
+    typeof formDataLike.append === "function" &&
+    typeof formDataLike.entries === "function" &&
+    formDataLike[Symbol.toStringTag] === "FormData"
+  );
 }
 
 function parseResponseText(text: string): unknown {

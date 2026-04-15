@@ -2,7 +2,7 @@ import * as React from "react";
 import { Search, Image as ImageIcon, Tag as TagIcon, Link as LinkIcon, CheckCircle2, Loader2, X, Plus } from "lucide-react";
 import { useApiClient } from "../api/ApiClientContext";
 import { useAppConfig } from "../config/AppConfigContext";
-import { useMemoList, useCreateMemo, useMemoSearch, useRemoveMemo, useInfiniteMemoSearch, useMemoMaintenanceStatus } from "@memo-inbox/api-client";
+import { useCreateMemo, useRemoveMemo, useInfiniteMemoList } from "@memo-inbox/api-client";
 import type { MemoDto } from "@memo-inbox/shared-types";
 import { appNavigateEvent } from "../router/createAppRouter";
 import { formatDateTime } from "../utils/formatDateTime";
@@ -75,7 +75,6 @@ export function DesktopInbox() {
   } | null>(null);
 
   const apiClient = useApiClient();
-  const { data: maintenanceStatus } = useMemoMaintenanceStatus(apiClient);
 
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
@@ -87,7 +86,7 @@ export function DesktopInbox() {
     isFetchingNextPage,
     fetchNextPage,
     hasNextPage
-  } = useInfiniteMemoSearch(apiClient, {
+  } = useInfiniteMemoList(apiClient, {
     q: debouncedSearchQuery || undefined,
     tag: selectedTag,
     from: activeFilter === 'today' ? todayStart.toISOString() : undefined,
@@ -312,10 +311,7 @@ export function DesktopInbox() {
   let memos: MemoDto[] = infiniteSearchData?.pages.flatMap(page => page.items) || [];
 
   const apiTotal = infiniteSearchData?.pages[0]?.total;
-  const realTotalMemos = maintenanceStatus?.memoCount ?? 0;
-  const displayTotal = (debouncedSearchQuery || selectedTag || activeFilter !== 'all')
-    ? (apiTotal ?? memos.length)
-    : realTotalMemos;
+  const displayTotal = apiTotal ?? memos.length;
 
   const inboxHeaderSlot = (
     <div className="flex h-10 max-w-md flex-1 items-center rounded-full bg-surface-container-low px-4 transition-shadow focus-within:ring-2 focus-within:ring-primary/20">

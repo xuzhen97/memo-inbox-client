@@ -1,12 +1,13 @@
 import * as React from "react";
-import { Search, Image as ImageIcon, Tag as TagIcon, Link as LinkIcon, CheckCircle2, Loader2, X, Plus, Eye } from "lucide-react";
+import { Search, Image as ImageIcon, Tag as TagIcon, Link as LinkIcon, CheckCircle2, Loader2, X, Plus, Eye, ChevronDown, ChevronUp } from "lucide-react";
 import { useApiClient } from "../api/ApiClientContext";
 import { useAppConfig } from "../config/AppConfigContext";
-import { useMemoSearch, useCreateMemo, useRemoveMemo, useInfiniteMemoSearch } from "@memo-inbox/api-client";
+import { useCreateMemo, useRemoveMemo, useInfiniteMemoList } from "@memo-inbox/api-client";
 import type { MemoDto } from "@memo-inbox/shared-types";
 import { getMobileTimeLabel, getRelativeDayLabel } from "../utils/mobileTimeFormat";
 import { appNavigateEvent } from "../router/createAppRouter";
 import { cancelMemoDeleteConfirmation, confirmMemoDelete, openMemoDeleteConfirmation } from "./memoDeleteState";
+import { useSettings } from "../config/SettingsContext";
 
 function resolveAttachmentUrl(baseUrl: string, url?: string) {
   if (!url) return "";
@@ -36,6 +37,7 @@ function useDebounce<T>(value: T, delay: number): T {
 
 export function MobileInbox() {
   const { apiUrl } = useAppConfig();
+  const { settings, updateSettings } = useSettings();
   const [memoText, setMemoText] = React.useState("");
   const [memoTags, setMemoTags] = React.useState<string[]>([]);
   const [tagInputValue, setTagInputValue] = React.useState("");
@@ -46,6 +48,14 @@ export function MobileInbox() {
   const [searchQuery, setSearchQuery] = React.useState("");
   const [selectedTag, setSelectedTag] = React.useState<string | undefined>();
   const debouncedSearchQuery = useDebounce(searchQuery, 300);
+  const [followTagInputValue, setFollowTagInputValue] = React.useState("");
+  const [showFollowTagInput, setShowFollowTagInput] = React.useState(false);
+  const [isFollowTagSectionExpanded, setIsFollowTagSectionExpanded] = React.useState(false);
+  const [pullRefreshDistance, setPullRefreshDistance] = React.useState(0);
+  const [isPullRefreshing, setIsPullRefreshing] = React.useState(false);
+  const [pullRefreshHint, setPullRefreshHint] = React.useState<"pull" | "release" | "refreshing" | "done">("pull");
+
+  const followedTags = settings.followedTags || [];
 
   const toggleTag = (tag: string) => {
     if (selectedTag === tag) {
@@ -60,13 +70,23 @@ export function MobileInbox() {
     attachmentUrls: string[];
     activeIndex: number;
   } | null>(null);
+  const [lightboxTransform, setLightboxTransform] = React.useState({
+    scale: 1,
+    translateX: 0,
+    translateY: 0,
+  });
   
   const tagInputRef = React.useRef<HTMLInputElement>(null);
+  const followTagInputRef = React.useRef<HTMLInputElement>(null);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const contentRef = React.useRef<HTMLDivElement>(null);
+  const pullStartYRef = React.useRef<number | null>(null);
+  const lastTapRef = React.useRef<number>(0);
+  const lightboxStartRef = React.useRef<{ x: number; y: number; distance: number | null } | null>(null);
 
   const apiClient = useApiClient();
   
-  const { data: infiniteSearchData, isLoading, isFetchingNextPage, fetchNextPage, hasNextPage } = useInfiniteMemoSearch(apiClient, {
+  const { data: infiniteSearchData, isLoading, isFetchingNextPage, fetchNextPage, hasNextPage, refetch } = useInfiniteMemoList(apiClient, {
     q: debouncedSearchQuery || undefined,
     tag: selectedTag,
     limit: 20
@@ -104,6 +124,12 @@ export function MobileInbox() {
     }
   }, [showTagInput]);
 
+  React.useEffect(() => {
+    if (showFollowTagInput && followTagInputRef.current) {
+      followTagInputRef.current.focus();
+    }
+  }, [showFollowTagInput]);
+
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
@@ -131,6 +157,32 @@ export function MobileInbox() {
     setTagInputValue("");
   };
 
+  const handleAddFollowTag = async (raw: string) => {
+    const tag = raw.replace(/^#+/, "").trim();
+    if (!tag || followedTags.includes(tag)) {
+      setFollowTagInputValue("");
+      setShowFollowTagInput(false);
+      return;
+    }
+
+    await updateSettings({
+      followedTags: [...followedTags, tag],
+    });
+    setFollowTagInputValue("");
+    setShowFollowTagInput(false);
+    setIsFollowTagSectionExpanded(true);
+  };
+
+  const handleRemoveFollowTag = async (tag: string) => {
+    await updateSettings({
+      followedTags: followedTags.filter((item) => item !== tag),
+    });
+
+    if (selectedTag === tag) {
+      setSelectedTag(undefined);
+    }
+  };
+
   const handleSend = async () => {
     if (!memoText.trim() && selectedFiles.length === 0) return;
     try {
@@ -154,16 +206,21 @@ export function MobileInbox() {
 
   const openLightbox = (memoId: string, attachmentUrls: string[], activeIndex: number) => {
     setLightboxState({ memoId, attachmentUrls, activeIndex });
+    setLightboxTransform({ scale: 1, translateX: 0, translateY: 0 });
   };
-  const closeLightbox = () => setLightboxState(null);
+  const closeLightbox = () => {
+    setLightboxState(null);
+    setLightboxTransform({ scale: 1, translateX: 0, translateY: 0 });
+  };
   const showPreviousLightboxImage = () => {
     setLightboxState((current) => {
       if (!current) return null;
       return {
         ...current,
         activeIndex: current.activeIndex === 0 ? current.attachmentUrls.length - 1 : current.activeIndex - 1
-      };
+      }
     });
+    setLightboxTransform({ scale: 1, translateX: 0, translateY: 0 });
   };
   const showNextLightboxImage = () => {
     setLightboxState((current) => {
@@ -171,8 +228,9 @@ export function MobileInbox() {
       return {
         ...current,
         activeIndex: current.activeIndex === current.attachmentUrls.length - 1 ? 0 : current.activeIndex + 1
-      };
+      }
     });
+    setLightboxTransform({ scale: 1, translateX: 0, translateY: 0 });
   };
 
   // Intersection Observer for Infinite Scroll
@@ -191,19 +249,138 @@ export function MobileInbox() {
   const touchStartX = React.useRef<number | null>(null);
 
   const handleTouchStart = (e: React.TouchEvent) => {
-    touchStartX.current = e.touches[0].clientX;
+    if (lightboxState) {
+      if (e.touches.length === 2) {
+        const dx = e.touches[0].clientX - e.touches[1].clientX;
+        const dy = e.touches[0].clientY - e.touches[1].clientY;
+        lightboxStartRef.current = {
+          x: (e.touches[0].clientX + e.touches[1].clientX) / 2,
+          y: (e.touches[0].clientY + e.touches[1].clientY) / 2,
+          distance: Math.hypot(dx, dy),
+        };
+        return;
+      }
+
+      lightboxStartRef.current = {
+        x: e.touches[0].clientX,
+        y: e.touches[0].clientY,
+        distance: null,
+      };
+      touchStartX.current = e.touches[0].clientX;
+      return;
+    }
+
+    const container = contentRef.current;
+    if (!container || container.scrollTop > 0 || isPullRefreshing) {
+      pullStartYRef.current = null;
+      return;
+    }
+
+    pullStartYRef.current = e.touches[0].clientY;
   };
 
-  const handleTouchEnd = (e: React.TouchEvent) => {
-    if (touchStartX.current === null) return;
-    const touchEndX = e.changedTouches[0].clientX;
-    const distance = touchStartX.current - touchEndX;
-    if (distance > 40) {
-      showNextLightboxImage();
-    } else if (distance < -40) {
-      showPreviousLightboxImage();
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (lightboxState) {
+      const lightboxStart = lightboxStartRef.current;
+
+      if (e.touches.length === 2 && lightboxStart?.distance) {
+        const dx = e.touches[0].clientX - e.touches[1].clientX;
+        const dy = e.touches[0].clientY - e.touches[1].clientY;
+        const distance = Math.hypot(dx, dy);
+        const nextScale = Math.min(3, Math.max(1, distance / lightboxStart.distance));
+        setLightboxTransform((current) => ({
+          ...current,
+          scale: nextScale,
+        }));
+        return;
+      }
+
+      if (lightboxTransform.scale > 1 && lightboxStart && e.touches.length === 1) {
+        setLightboxTransform((current) => ({
+          ...current,
+          translateX: current.translateX + (e.touches[0].clientX - lightboxStart.x),
+          translateY: current.translateY + (e.touches[0].clientY - lightboxStart.y),
+        }));
+        lightboxStartRef.current = {
+          x: e.touches[0].clientX,
+          y: e.touches[0].clientY,
+          distance: null,
+        };
+        return;
+      }
+
+      return;
     }
-    touchStartX.current = null;
+
+    if (pullStartYRef.current === null) {
+      return;
+    }
+
+    const distance = Math.max(0, e.touches[0].clientY - pullStartYRef.current);
+    const capped = Math.min(distance, 120);
+    if (capped > 0) {
+      setPullRefreshDistance(capped);
+      setPullRefreshHint(capped >= 72 ? "release" : "pull");
+    }
+  };
+
+  const triggerPullRefresh = async () => {
+    if (isPullRefreshing) {
+      return;
+    }
+
+    setIsPullRefreshing(true);
+    setPullRefreshHint("refreshing");
+    try {
+      await refetch();
+      setPullRefreshHint("done");
+    } finally {
+      setTimeout(() => {
+        setIsPullRefreshing(false);
+        setPullRefreshDistance(0);
+        setPullRefreshHint("pull");
+      }, 400);
+    }
+  };
+
+  const handleTouchEnd = async (e: React.TouchEvent) => {
+    if (lightboxState) {
+      if (touchStartX.current !== null && lightboxTransform.scale === 1) {
+        const touchEndX = e.changedTouches[0].clientX;
+        const distance = touchStartX.current - touchEndX;
+        if (distance > 40) {
+          showNextLightboxImage();
+        } else if (distance < -40) {
+          showPreviousLightboxImage();
+        }
+      }
+
+      touchStartX.current = null;
+      lightboxStartRef.current = null;
+      return;
+    }
+
+    if (pullStartYRef.current !== null && pullRefreshDistance >= 72) {
+      pullStartYRef.current = null;
+      await triggerPullRefresh();
+      return;
+    }
+
+    pullStartYRef.current = null;
+    setPullRefreshDistance(0);
+    setPullRefreshHint("pull");
+  };
+
+  const handleLightboxDoubleTap = () => {
+    const now = Date.now();
+    if (now - lastTapRef.current < 280) {
+      setLightboxTransform((current) => (
+        current.scale > 1
+          ? { scale: 1, translateX: 0, translateY: 0 }
+          : { scale: 2, translateX: 0, translateY: 0 }
+      ));
+    }
+    lastTapRef.current = now;
   };
 
   let memos: MemoDto[] = infiniteSearchData?.pages.flatMap(page => page.items) || [];
@@ -212,7 +389,13 @@ export function MobileInbox() {
   let lastRelativeDay = "";
 
   return (
-    <div className="flex flex-col min-h-full px-5 pt-4 pb-12 w-full max-w-lg mx-auto">
+    <div
+      ref={contentRef}
+      className="flex flex-col min-h-full px-5 pt-4 pb-12 w-full max-w-lg mx-auto"
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+    >
       
       {/* Search Input */}
       <div className="flex items-center bg-[#FCFAFA] md:bg-surface-container-high/50 border border-outline-variant/10 rounded-[16px] px-4 py-2.5 mb-6 transition-shadow focus-within:ring-2 focus-within:ring-primary/20">
@@ -249,8 +432,20 @@ export function MobileInbox() {
         )}
       </div>
 
+      <div className="mb-5">
+        <div
+          className="overflow-hidden transition-[height,opacity] duration-200"
+          style={{ height: pullRefreshDistance > 0 || isPullRefreshing ? 44 : 0, opacity: pullRefreshDistance > 0 || isPullRefreshing ? 1 : 0 }}
+        >
+          <div className="flex h-11 items-center justify-center text-[11px] font-bold text-on-surface-variant/60">
+            {pullRefreshHint === "release" ? "松手刷新" : pullRefreshHint === "refreshing" ? "正在刷新..." : pullRefreshHint === "done" ? "已刷新" : "下拉刷新"}
+          </div>
+        </div>
+
+      </div>
+
       {/* Editor Area */}
-      <div className="bg-white rounded-[24px] p-5 shadow-[0_2px_12px_rgba(0,0,0,0.03)] mb-8">
+      <div className="bg-white rounded-[24px] p-5 shadow-[0_2px_12px_rgba(0,0,0,0.03)] mb-6">
         <textarea
           placeholder="记下此刻的想法..."
           className="w-full bg-transparent border-none resize-none focus:outline-none min-h-[80px] text-[15px] font-sans placeholder:text-on-surface-variant/30 text-primary leading-relaxed"
@@ -344,6 +539,88 @@ export function MobileInbox() {
             记录这条想法
           </button>
         </div>
+      </div>
+
+      <div className="mb-8 rounded-[20px] border border-outline-variant/15 bg-[#FCFAFA] px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.45)]">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <div className="text-[11px] font-bold tracking-[0.15em] text-on-surface-variant/35 uppercase">关注标签</div>
+            {!isFollowTagSectionExpanded && selectedTag && (
+              <div className="mt-1 text-[12px] font-medium text-primary">当前：#{selectedTag}</div>
+            )}
+          </div>
+          <button
+            type="button"
+            aria-label={isFollowTagSectionExpanded ? "收起关注标签" : "展开关注标签"}
+            className="rounded-full p-1.5 text-on-surface-variant/45 transition-colors hover:text-on-surface-variant/70"
+            onClick={() => {
+              setIsFollowTagSectionExpanded((current) => {
+                const next = !current;
+                if (!next) {
+                  setShowFollowTagInput(false);
+                  setFollowTagInputValue("");
+                }
+                return next;
+              });
+            }}
+          >
+            {isFollowTagSectionExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+          </button>
+        </div>
+
+        {isFollowTagSectionExpanded ? (
+          <div className="mt-3">
+            <div className="flex flex-wrap gap-2">
+              {followedTags.map((tag) => (
+                <div
+                  key={tag}
+                  className={`group relative flex items-center rounded-full px-3 py-1.5 pr-8 text-[11px] font-bold ${
+                    selectedTag === tag ? "bg-primary text-white" : "bg-white text-primary border border-outline-variant/10"
+                  }`}
+                >
+                  <button type="button" onClick={() => toggleTag(tag)}>
+                    #{tag}
+                  </button>
+                  <button
+                    type="button"
+                    aria-label={`移除关注标签 ${tag}`}
+                    className={`absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-0.5 ${selectedTag === tag ? "text-white/80" : "text-on-surface-variant/55"}`}
+                    onClick={() => void handleRemoveFollowTag(tag)}
+                  >
+                    <X size={10} />
+                  </button>
+                </div>
+              ))}
+
+              <button
+                type="button"
+                aria-label="添加关注标签"
+                className="inline-flex items-center justify-center rounded-full border border-outline-variant/15 bg-white px-3 py-1.5 text-on-surface-variant/55 transition-colors hover:text-primary"
+                onClick={() => setShowFollowTagInput(true)}
+              >
+                <Plus size={12} />
+              </button>
+
+              {showFollowTagInput && (
+                <input
+                  ref={followTagInputRef}
+                  type="text"
+                  value={followTagInputValue}
+                  onChange={(e) => setFollowTagInputValue(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " " || e.key === ",") {
+                      e.preventDefault();
+                      void handleAddFollowTag(followTagInputValue);
+                    }
+                  }}
+                  onBlur={() => void handleAddFollowTag(followTagInputValue)}
+                  placeholder="输入标签"
+                  className="min-w-[96px] rounded-full border border-outline-variant/10 bg-white px-3 py-1.5 text-[11px] font-bold text-primary outline-none"
+                />
+              )}
+            </div>
+          </div>
+        ) : null}
       </div>
 
       {/* Timeline Feed */}
@@ -478,10 +755,9 @@ export function MobileInbox() {
 
       {lightboxState && (
         <div
+          data-testid="mobile-lightbox"
           className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 px-4 py-10 touch-none"
           onClick={closeLightbox}
-          onTouchStart={handleTouchStart}
-          onTouchEnd={handleTouchEnd}
         >
           <button
             type="button"
@@ -494,6 +770,7 @@ export function MobileInbox() {
             <>
               <button
                 type="button"
+                aria-label="查看上一张图片"
                 className="absolute left-4 top-1/2 -translate-y-1/2 rounded-full bg-white/10 p-3 text-white hover:bg-white/20"
                 onClick={(e) => { e.stopPropagation(); showPreviousLightboxImage(); }}
               >
@@ -501,6 +778,7 @@ export function MobileInbox() {
               </button>
               <button
                 type="button"
+                aria-label="查看下一张图片"
                 className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full bg-white/10 p-3 text-white hover:bg-white/20"
                 onClick={(e) => { e.stopPropagation(); showNextLightboxImage(); }}
               >
@@ -508,10 +786,22 @@ export function MobileInbox() {
               </button>
             </>
           )}
+          <div className="absolute top-10 left-1/2 -translate-x-1/2 rounded-full bg-white/10 px-3 py-1 text-[11px] font-bold text-white">
+            {lightboxState.activeIndex + 1} / {lightboxState.attachmentUrls.length}
+          </div>
           <img
+            data-testid="mobile-lightbox-image"
             src={resolveAttachmentUrl(apiUrl, lightboxState.attachmentUrls[lightboxState.activeIndex])}
             alt="Lightbox Preview"
-            className="max-h-full max-w-full object-contain pointer-events-none select-none"
+            className="max-h-full max-w-full object-contain select-none"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleLightboxDoubleTap();
+            }}
+            style={{
+              transform: `scale(${lightboxTransform.scale}) translate(${lightboxTransform.translateX}px, ${lightboxTransform.translateY}px)`,
+              transition: lightboxTransform.scale === 1 ? "transform 120ms ease-out" : "none",
+            }}
           />
         </div>
       )}

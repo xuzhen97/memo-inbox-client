@@ -2,50 +2,37 @@ import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { describe, expect, it, vi } from "vitest";
 
-import { ApiClientContext } from "../api/ApiClientContext";
-import { AppConfigContext } from "../config/AppConfigContext";
-import { PlatformBridgeContext } from "../platform/PlatformBridgeContext";
 import { createAppRouter } from "../router/createAppRouter";
+import { TestProviders } from "./testProviders";
 
 vi.mock("@memo-inbox/api-client", () => ({
-  useMemoList: vi.fn(() => ({
+  useInfiniteMemoList: vi.fn(() => ({
     data: {
-      items: [
+      pages: [
         {
-          memoId: "memo-1",
-          header: { date: "2026-04-12", maidName: "tester" },
-          content: "需要编辑的 memo",
-          attachments: [],
-          tags: ["工作"],
-          meta: { memoId: "memo-1" },
-          createdAt: "2026-04-12T10:00:00.000Z",
-          updatedAt: "2026-04-12T10:00:00.000Z",
-          deleted: false,
-          filename: "memo-1.md"
-        }
-      ],
-      nextCursor: null
-    },
-    isLoading: false
-  })),
-  useMemoSearch: vi.fn(() => ({
-    data: {
-      items: [
-        {
-          memoId: "memo-1",
-          header: { date: "2026-04-12", maidName: "tester" },
-          content: "需要编辑的 memo",
-          attachments: [],
-          tags: ["工作"],
-          meta: { memoId: "memo-1" },
-          createdAt: "2026-04-12T10:00:00.000Z",
-          updatedAt: "2026-04-12T10:00:00.000Z",
-          deleted: false,
-          filename: "memo-1.md"
+          items: [
+            {
+              memoId: "memo-1",
+              header: { date: "2026-04-12", maidName: "tester" },
+              content: "需要编辑的 memo",
+              attachments: [],
+              tags: ["工作"],
+              meta: { memoId: "memo-1" },
+              createdAt: "2026-04-12T10:00:00.000Z",
+              updatedAt: "2026-04-12T10:00:00.000Z",
+              deleted: false,
+              filename: "memo-1.md"
+            }
+          ],
+          nextCursor: null,
+          total: 1
         }
       ]
     },
-    isLoading: false
+    isLoading: false,
+    isFetchingNextPage: false,
+    fetchNextPage: vi.fn(),
+    hasNextPage: false
   })),
   useCreateMemo: vi.fn(() => ({
     mutateAsync: vi.fn(),
@@ -78,15 +65,6 @@ vi.mock("../screens/DesktopMemoEdit", () => ({
   }
 }));
 
-function createPlatformBridge() {
-  return {
-    getPlatformInfo: vi.fn().mockResolvedValue({ kind: "desktop", runtime: "test" }),
-    saveDraft: vi.fn(),
-    loadDraft: vi.fn(),
-    removeDraft: vi.fn()
-  };
-}
-
 describe("DesktopInbox edit link", () => {
   it("navigates to /memos/:memoId/edit when the edit button is clicked", async () => {
     const host = document.createElement("div");
@@ -97,11 +75,7 @@ describe("DesktopInbox edit link", () => {
 
     await act(async () => {
       root.render(
-        <AppConfigContext.Provider value={{ apiUrl: "http://localhost:3000" }}>
-          <PlatformBridgeContext.Provider value={createPlatformBridge()}>
-            <ApiClientContext.Provider value={{} as never}>{createAppRouter()}</ApiClientContext.Provider>
-          </PlatformBridgeContext.Provider>
-        </AppConfigContext.Provider>
+        <TestProviders>{createAppRouter()}</TestProviders>
       );
     });
 

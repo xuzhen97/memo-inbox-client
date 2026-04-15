@@ -147,7 +147,13 @@ export function MobileMemoEdit({ memoId }: MobileMemoEditProps) {
 
   return (
     <div className="flex flex-col h-[100dvh] w-full bg-[#FCFAFA] font-sans text-on-surface relative">
-      <header className="flex-shrink-0 flex items-center justify-between px-5 h-14 bg-[#FCFAFA] z-10 border-b border-outline-variant/10">
+      <header 
+        className="flex-shrink-0 flex items-center justify-between px-5 bg-[#FCFAFA] z-10 border-b border-outline-variant/10"
+        style={{ 
+          paddingTop: 'max(env(safe-area-inset-top), 24px)',
+          paddingBottom: '12px'
+        }}
+      >
         <button className="p-2 -ml-2 text-on-surface-variant hover:text-primary transition-colors flex items-center gap-1 font-bold text-[13px]" onClick={handleCancel}>
           <ArrowLeft size={18} /> 返回主页
         </button>

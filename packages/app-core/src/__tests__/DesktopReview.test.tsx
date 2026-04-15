@@ -2,9 +2,8 @@ import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { ApiClientContext } from "../api/ApiClientContext";
-import { AppConfigContext } from "../config/AppConfigContext";
 import { DesktopReview } from "../screens/DesktopReview";
+import { TestProviders } from "./testProviders";
 
 const useReviewRandomMemoMock = vi.fn();
 
@@ -23,11 +22,9 @@ function renderDesktopReview() {
     render: async () => {
       await act(async () => {
         root.render(
-          <AppConfigContext.Provider value={{ apiUrl: "http://localhost:3000" }}>
-            <ApiClientContext.Provider value={{} as never}>
-              <DesktopReview />
-            </ApiClientContext.Provider>
-          </AppConfigContext.Provider>,
+          <TestProviders>
+            <DesktopReview />
+          </TestProviders>,
         );
       });
     },

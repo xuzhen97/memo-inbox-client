@@ -19,18 +19,28 @@ function getHeader(headers: HeadersInit | undefined, name: string) {
 
 describe("createApiClient", () => {
   it("normalizes baseUrl and injects bearer auth headers", async () => {
-    const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ items: [], nextCursor: null }));
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ items: [], nextCursor: null, total: 0 }));
     const client = createApiClient({
       baseUrl: "http://localhost:3030/",
       bearerToken: "secret",
       fetch: fetchMock
     });
 
-    await client.memos.list({ limit: 10, cursor: "memo-1" });
+    await client.memos.list({
+      limit: 10,
+      cursor: "memo-1",
+      q: "hello",
+      tag: "sdk",
+      from: "2026-04-01",
+      to: "2026-04-11",
+      hasImage: true
+    });
 
     const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
 
-    expect(url).toBe("http://localhost:3030/api/plugins/MemoInboxAPI/memos?limit=10&cursor=memo-1");
+    expect(url).toBe(
+      "http://localhost:3030/api/plugins/MemoInboxAPI/memos?limit=10&cursor=memo-1&q=hello&tag=sdk&from=2026-04-01&to=2026-04-11&hasImage=true"
+    );
     expect(init.method).toBe("GET");
     expect(getHeader(init.headers, "Authorization")).toBe("Bearer secret");
     expect(getHeader(init.headers, "Accept")).toBe("application/json");
@@ -131,6 +141,36 @@ describe("createApiClient", () => {
     expect(getHeader(init.headers, "Content-Type")).toBeNull();
   });
 
+  it("treats cross-runtime FormData-like bodies as multipart requests", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ memoId: "memo_3" }));
+    const client = createApiClient({
+      baseUrl: "http://localhost:3030",
+      bearerToken: "secret",
+      fetch: fetchMock
+    });
+    const entries = [
+      ["content", "hello with image"],
+      ["files", new File(["img"], "memo.png", { type: "image/png" })]
+    ] as const;
+    const formDataLike = {
+      append: vi.fn(),
+      entries: function* () {
+        yield* entries;
+      },
+      [Symbol.toStringTag]: "FormData"
+    } as unknown as FormData;
+
+    await client.memos.create({
+      content: "ignored by formData override",
+      formData: formDataLike
+    });
+
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+
+    expect(init.body).toBe(formDataLike);
+    expect(getHeader(init.headers, "Content-Type")).toBeNull();
+  });
+
   it("sends multipart bodies for memo updates with attachment changes", async () => {
     const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ memoId: "memo_2" }));
     const client = createApiClient({
@@ -181,7 +221,7 @@ describe("createApiClient", () => {
     });
   });
 
-  it("routes CRUD, search, review, import, task, maintenance and status requests to the expected endpoints", async () => {
+  it("routes CRUD, list, review, import, task and status requests to the expected endpoints", async () => {
     const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(jsonResponse({ memoId: "memo_1" }))
@@ -190,18 +230,14 @@ describe("createApiClient", () => {
       .mockResolvedValueOnce(new Response(null, { status: 204 }))
       .mockResolvedValueOnce(jsonResponse({ memoId: "memo_1" }))
       .mockResolvedValueOnce(new Response(null, { status: 204 }))
-      .mockResolvedValueOnce(jsonResponse({ items: [], nextCursor: null }))
-      .mockResolvedValueOnce(jsonResponse({ items: [] }))
+      .mockResolvedValueOnce(jsonResponse({ items: [], nextCursor: null, total: 0 }))
+      .mockResolvedValueOnce(jsonResponse({ items: [], nextCursor: null, total: 0 }))
       .mockResolvedValueOnce(jsonResponse({ items: [] }))
       .mockResolvedValueOnce(jsonResponse({ memoId: "memo_2" }))
-      .mockResolvedValueOnce(jsonResponse({ memoId: "memo_3", reviewReason: "earliest_memo_for_daily_review" }))
       .mockResolvedValueOnce(jsonResponse({ taskId: "task_1", status: "accepted", statusUrl: "/tasks/task_1" }, { status: 202 }))
       .mockResolvedValueOnce(jsonResponse({ taskId: "task_1", status: "running", progress: 10 }))
       .mockResolvedValueOnce(jsonResponse({ taskId: "task_1", errors: [] }))
       .mockResolvedValueOnce(jsonResponse({ taskId: "task_1", status: "cancelled", progress: 10 }))
-      .mockResolvedValueOnce(jsonResponse({ memoCount: 1, trashCount: 0, attachmentCount: 0, indexCount: 1, taskSummary: { total: 0, accepted: 0, running: 0, completed: 0, failed: 0, cancelled: 0 }, paths: { memoRootPath: "a", memoTrashPath: "b", memoImageRootPath: "c" } }))
-      .mockResolvedValueOnce(jsonResponse({ taskId: "task_2", status: "accepted", statusUrl: "/tasks/task_2" }, { status: 202 }))
-      .mockResolvedValueOnce(jsonResponse({ taskId: "task_3", status: "accepted", statusUrl: "/tasks/task_3" }, { status: 202 }))
       .mockResolvedValueOnce(jsonResponse({ status: "ok", plugin: "MemoInboxAPI", memoDiaryName: "MyMemos", imageServerKeyConfigured: true }));
     const client = createApiClient({
       baseUrl: "http://localhost:3030",
@@ -214,11 +250,16 @@ describe("createApiClient", () => {
     await client.memos.remove("memo_1");
     await client.memos.restore("memo_1");
     await client.memos.purge("memo_1");
-    await client.memos.list({ limit: 20 });
+    await client.memos.list({
+      q: "hello",
+      tag: "sdk",
+      from: "2026-04-01",
+      to: "2026-04-11",
+      hasImage: true,
+      limit: 5
+    });
     await client.trash.list();
-    await client.search.query({ q: "hello", tag: "sdk", from: "2026-04-01", to: "2026-04-11", limit: 5 });
     await client.review.random();
-    await client.review.daily();
     await client.imports.create({
       items: [{ content: "imported" }],
       mode: "insert"
@@ -226,9 +267,6 @@ describe("createApiClient", () => {
     await client.tasks.get("task_1");
     await client.tasks.getErrors("task_1");
     await client.tasks.cancel("task_1");
-    await client.maintenance.getStatus();
-    await client.maintenance.reindex();
-    await client.maintenance.reconcile();
     await client.system.getStatus();
 
     const calls = fetchMock.mock.calls as Array<[string, RequestInit]>;
@@ -242,27 +280,25 @@ describe("createApiClient", () => {
     expect(calls[3][1].method).toBe("POST");
     expect(calls[4][0]).toBe("http://localhost:3030/api/plugins/MemoInboxAPI/memos/memo_1/purge");
     expect(calls[4][1].method).toBe("DELETE");
-    expect(calls[5][0]).toBe("http://localhost:3030/api/plugins/MemoInboxAPI/memos?limit=20");
+    const listUrl = new URL(calls[5][0]);
+    expect(`${listUrl.origin}${listUrl.pathname}`).toBe("http://localhost:3030/api/plugins/MemoInboxAPI/memos");
+    expect(listUrl.searchParams.get("q")).toBe("hello");
+    expect(listUrl.searchParams.get("tag")).toBe("sdk");
+    expect(listUrl.searchParams.get("from")).toBe("2026-04-01");
+    expect(listUrl.searchParams.get("to")).toBe("2026-04-11");
+    expect(listUrl.searchParams.get("hasImage")).toBe("true");
+    expect(listUrl.searchParams.get("limit")).toBe("5");
     expect(calls[6][0]).toBe("http://localhost:3030/api/plugins/MemoInboxAPI/trash");
-    expect(calls[7][0]).toBe(
-      "http://localhost:3030/api/plugins/MemoInboxAPI/search?q=hello&tag=sdk&from=2026-04-01&to=2026-04-11&limit=5"
-    );
-    expect(calls[8][0]).toBe("http://localhost:3030/api/plugins/MemoInboxAPI/review/random");
-    expect(calls[9][0]).toBe("http://localhost:3030/api/plugins/MemoInboxAPI/review/daily");
-    expect(calls[10][0]).toBe("http://localhost:3030/api/plugins/MemoInboxAPI/imports");
-    expect(calls[11][0]).toBe("http://localhost:3030/api/plugins/MemoInboxAPI/tasks/task_1");
-    expect(calls[12][0]).toBe("http://localhost:3030/api/plugins/MemoInboxAPI/tasks/task_1/errors");
-    expect(calls[13][0]).toBe("http://localhost:3030/api/plugins/MemoInboxAPI/tasks/task_1/cancel");
-    expect(calls[13][1].method).toBe("POST");
-    expect(calls[14][0]).toBe("http://localhost:3030/api/plugins/MemoInboxAPI/maintenance/status");
-    expect(calls[15][0]).toBe("http://localhost:3030/api/plugins/MemoInboxAPI/maintenance/reindex");
-    expect(calls[15][1].method).toBe("POST");
-    expect(calls[16][0]).toBe("http://localhost:3030/api/plugins/MemoInboxAPI/maintenance/reconcile");
-    expect(calls[16][1].method).toBe("POST");
-    expect(calls[17][0]).toBe("http://localhost:3030/api/plugins/MemoInboxAPI/status");
+    expect(calls[7][0]).toBe("http://localhost:3030/api/plugins/MemoInboxAPI/review/random");
+    expect(calls[8][0]).toBe("http://localhost:3030/api/plugins/MemoInboxAPI/imports");
+    expect(calls[9][0]).toBe("http://localhost:3030/api/plugins/MemoInboxAPI/tasks/task_1");
+    expect(calls[10][0]).toBe("http://localhost:3030/api/plugins/MemoInboxAPI/tasks/task_1/errors");
+    expect(calls[11][0]).toBe("http://localhost:3030/api/plugins/MemoInboxAPI/tasks/task_1/cancel");
+    expect(calls[11][1].method).toBe("POST");
+    expect(calls[12][0]).toBe("http://localhost:3030/api/plugins/MemoInboxAPI/status");
   });
 
-  it("invalidates memo detail, list and search queries after remove succeeds", async () => {
+  it("invalidates memo detail, list and trash queries after remove succeeds", async () => {
     const invalidateQueries = vi.fn().mockResolvedValue(undefined);
     const queryClient = {
       invalidateQueries,
@@ -272,6 +308,6 @@ describe("createApiClient", () => {
 
     expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ["memos", "detail", "memo_1"] });
     expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ["memos", "list"] });
-    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ["memos", "search"] });
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ["memos", "trash"] });
   });
 });

@@ -2,15 +2,15 @@ import { describe, expectTypeOf, it } from "vitest";
 
 import type {
   CreateImportTaskInput,
+  ListMemosInput,
   CreateMemoInput,
   MemoDto,
   MemoInboxClientConfig,
-  MemoMaintenanceStatus,
+  MemoListResponse,
   MemoSystemStatus,
   MemoTaskAcceptedResponse,
   MemoTaskDto,
   MemoTaskEvent,
-  SearchMemosInput,
   TaskEventClientConfig,
   UpdateMemoInput
 } from "../index";
@@ -36,9 +36,15 @@ describe("shared types exports", () => {
       tags?: string[];
     }>();
 
-    expectTypeOf<SearchMemosInput>().toMatchTypeOf<{
+    expectTypeOf<ListMemosInput>().toMatchTypeOf<{
       q?: string;
       limit?: number;
+    }>();
+
+    expectTypeOf<MemoListResponse>().toMatchTypeOf<{
+      items: MemoDto[];
+      nextCursor: string | null;
+      total: number;
     }>();
 
     expectTypeOf<CreateImportTaskInput>().toMatchTypeOf<{
@@ -67,11 +73,6 @@ describe("shared types exports", () => {
     expectTypeOf<MemoTaskEvent>().toMatchTypeOf<{
       type: string;
       data: { taskId: string };
-    }>();
-
-    expectTypeOf<MemoMaintenanceStatus>().toMatchTypeOf<{
-      memoCount: number;
-      taskSummary: { total: number };
     }>();
 
     expectTypeOf<MemoSystemStatus>().toMatchTypeOf<{

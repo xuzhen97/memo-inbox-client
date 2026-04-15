@@ -1,7 +1,7 @@
 import type { MemoTaskEvent, MemoTaskStatus } from "@memo-inbox/shared-types";
 import { createTaskEventClient } from "@memo-inbox/api-client";
 import type { PropsWithChildren } from "react";
-import { createContext, useContext, useEffect, useState, useCallback, useMemo } from "react";
+import { createContext, useContext, useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { useSettings } from "../config/SettingsContext";
 
 interface TaskNotification {
@@ -21,6 +21,8 @@ interface TaskEventContextValue {
   markAsRead: (id: string) => void;
   markAllAsRead: () => void;
   clearNotifications: () => void;
+  registerTask: (taskId: string) => void;
+  unregisterTask: (taskId: string) => void;
   hasUnread: boolean;
 }
 
@@ -30,12 +32,13 @@ export function TaskEventProvider({ children }: PropsWithChildren) {
   const { settings } = useSettings();
   const [notifications, setNotifications] = useState<TaskNotification[]>([]);
   const [activeTasks, setActiveTasks] = useState<Record<string, MemoTaskEvent["data"]>>({});
+  const trackedTaskIdsRef = useRef(new Set<string>());
 
   const client = useMemo(() => {
-    if (!settings.serviceBaseUrl || !settings.socketVcpKey) return null;
-    
+    if (!settings.socketBaseUrl || !settings.socketVcpKey) return null;
+
     return createTaskEventClient({
-      baseUrl: settings.serviceBaseUrl,
+      baseUrl: settings.socketBaseUrl,
       vcpKey: settings.socketVcpKey,
       reconnect: {
         enabled: true,
@@ -43,7 +46,25 @@ export function TaskEventProvider({ children }: PropsWithChildren) {
         delayMs: 2000,
       },
     });
-  }, [settings.serviceBaseUrl, settings.socketVcpKey]);
+  }, [settings.socketBaseUrl, settings.socketVcpKey]);
+
+  const registerTask = useCallback((taskId: string) => {
+    if (!taskId) {
+      return;
+    }
+
+    trackedTaskIdsRef.current.add(taskId);
+    client?.subscribeTask(taskId);
+  }, [client]);
+
+  const unregisterTask = useCallback((taskId: string) => {
+    if (!taskId) {
+      return;
+    }
+
+    trackedTaskIdsRef.current.delete(taskId);
+    client?.unsubscribeTask(taskId);
+  }, [client]);
 
   useEffect(() => {
     if (!client) return;
@@ -62,8 +83,8 @@ export function TaskEventProvider({ children }: PropsWithChildren) {
         });
       }
 
-      // Add or update notification for important status changes
-      if (status === "completed" || status === "failed") {
+      // Add or update notification for terminal status changes
+      if (status === "completed" || status === "failed" || status === "cancelled") {
         setNotifications(prev => {
           const existingIndex = prev.findIndex(n => n.taskId === taskId);
           const notification = {
@@ -88,16 +109,29 @@ export function TaskEventProvider({ children }: PropsWithChildren) {
       }
     };
 
-    client.on("memo_task_progress", handleTaskUpdate);
-    client.on("memo_task_completed", handleTaskUpdate);
-    client.on("memo_task_failed", handleTaskUpdate);
-    client.on("memo_task_accepted", handleTaskUpdate);
+    const eventTypes = [
+      "memo_task_progress",
+      "memo_task_completed",
+      "memo_task_failed",
+      "memo_task_accepted",
+      "memo_task_cancelled",
+    ] as const;
+    for (const taskId of trackedTaskIdsRef.current) {
+      client.subscribeTask(taskId);
+    }
+
+    for (const eventType of eventTypes) {
+      client.on(eventType, handleTaskUpdate);
+    }
 
     void client.connect().catch(err => {
       console.warn("Task event socket connection failed (expected if settings are not configured):", err);
     });
 
     return () => {
+      for (const eventType of eventTypes) {
+        client.off(eventType, handleTaskUpdate);
+      }
       client.disconnect();
     };
   }, [client]);
@@ -123,6 +157,8 @@ export function TaskEventProvider({ children }: PropsWithChildren) {
       markAsRead, 
       markAllAsRead, 
       clearNotifications,
+      registerTask,
+      unregisterTask,
       hasUnread 
     }}>
       {children}

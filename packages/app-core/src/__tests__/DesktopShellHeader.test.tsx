@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 
 import { DesktopShellHeader } from "../components/DesktopShellHeader";
 import { appNavigateEvent } from "../router/createAppRouter";
+import { TaskEventContext } from "../api/TaskEventContext";
 
 async function renderHeader(pathname: string, activeTab: "all" | "review") {
   const host = document.createElement("div");
@@ -14,10 +15,23 @@ async function renderHeader(pathname: string, activeTab: "all" | "review") {
 
   await act(async () => {
     root.render(
-      <DesktopShellHeader
-        activeTab={activeTab}
-        centerSlot={<div data-testid="center-slot">center</div>}
-      />,
+      <TaskEventContext.Provider
+        value={{
+          notifications: [],
+          activeTasks: {},
+          markAsRead: () => {},
+          markAllAsRead: () => {},
+          clearNotifications: () => {},
+          registerTask: () => {},
+          unregisterTask: () => {},
+          hasUnread: false,
+        }}
+      >
+        <DesktopShellHeader
+          activeTab={activeTab}
+          centerSlot={<div data-testid="center-slot">center</div>}
+        />
+      </TaskEventContext.Provider>,
     );
   });
 
@@ -63,10 +77,16 @@ describe("DesktopShellHeader", () => {
     host.remove();
   });
 
-  it("keeps 归档 as a disabled placeholder", async () => {
+  it("navigates to /archive when clicking 归档", async () => {
     const { host, root } = await renderHeader("/", "all");
 
-    expect(host.querySelector('button[aria-label="归档暂未接入"]')?.hasAttribute("disabled")).toBe(true);
+    await act(async () => {
+      host.querySelector('button[aria-label="前往归档页面"]')?.dispatchEvent(
+        new MouseEvent("click", { bubbles: true }),
+      );
+    });
+
+    expect(window.location.pathname).toBe("/archive");
 
     await act(async () => {
       root.unmount();

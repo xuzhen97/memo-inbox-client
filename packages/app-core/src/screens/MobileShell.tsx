@@ -31,7 +31,13 @@ export function MobileShell({ children, activePath }: MobileShellProps) {
   return (
     <div className="flex flex-col h-[100dvh] w-full bg-[#FCFAFA] font-sans text-on-surface overflow-hidden relative">
       {/* Header */}
-      <header className="flex-shrink-0 flex items-center justify-between px-5 h-14 bg-[#FCFAFA]">
+      <header 
+        className="flex-shrink-0 flex items-center justify-between px-5 bg-[#FCFAFA]"
+        style={{ 
+          paddingTop: 'max(env(safe-area-inset-top), 24px)',
+          paddingBottom: '12px'
+        }}
+      >
         <button className="p-2 -ml-2 text-on-surface-variant/70 hover:text-primary transition-colors">
           <Menu size={20} />
         </button>

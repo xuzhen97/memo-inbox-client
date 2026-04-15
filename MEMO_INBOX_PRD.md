@@ -25,7 +25,7 @@ Memo Inbox 是一个基于 VCPToolBox 插件体系构建的单用户 memo 收件
 - 为单用户场景提供统一的 memo API 插件。
 - 支持 memo 的创建、读取、更新、删除、恢复和永久删除。
 - 支持图片附件写入，并复用现有图片访问体系。
-- 支持基础搜索、回顾、批量导入和维护操作。
+- 支持基于列表筛选的检索、回顾和批量导入。
 - 支持 HTTP 轮询和 WebSocket 推送两种任务状态消费方式。
 - 保持对现有 VCPToolBox 运行时的低侵入复用。
 
@@ -41,7 +41,7 @@ Memo Inbox 是一个基于 VCPToolBox 插件体系构建的单用户 memo 收件
 
 - `MemoInboxAPI` 以 `hybridservice` 插件运行，挂载在 `/api/plugins/MemoInboxAPI`。
 - Bearer 鉴权复用服务端全局中间件，插件层不重复实现鉴权。
-- 支持 memo CRUD、回收站、搜索、回顾、导入、维护、任务查询。
+- 支持 memo CRUD、回收站、列表筛选、回顾、导入、任务查询。
 - 支持图片输入：`imageUrls`、`imageBase64`、`multipart/form-data` 文件上传。
 - 支持任务 WebSocket 订阅与推送。
 - memo 文件写入 `dailynote/MyMemos/`，软删除移动到 `.trash/`。
@@ -49,14 +49,11 @@ Memo Inbox 是一个基于 VCPToolBox 插件体系构建的单用户 memo 收件
 
 ### 5.2 当前版本能力简化
 
-- `GET /memos` 当前只支持 `limit` 与 `cursor`，未实现 `tag/from/to` 过滤。
-- 搜索是基于当前 memo 列表的关键词过滤，不是语义搜索。
+- `GET /memos` 已支持 `q/tag/from/to/hasImage/limit/cursor`。
+- 列表检索是基于当前 memo 列表的条件过滤，不是语义搜索。
 - `GET /review/random` 当前返回列表中的首条 memo，不是真随机。
-- `GET /review/daily` 当前返回按时间排序后的最早一条 memo，并附带固定 `reviewReason`。
 - `POST /imports` 接收 `mode`，但当前实现统一按逐条创建处理，未真正实现 `upsert` / `skip_duplicates`。
 - `POST /tasks/:taskId/cancel` 当前只更新任务状态，不保证中断已开始的后台执行。
-- `POST /maintenance/reconcile` 当前返回占位结果，尚未执行真实修复。
-- `GET /maintenance/status` 当前 `attachmentCount` 固定为 `0`。
 
 ### 5.3 暂不纳入
 
@@ -81,7 +78,7 @@ Memo Inbox 是一个基于 VCPToolBox 插件体系构建的单用户 memo 收件
 
 1. 客户端通过 `GET /memos` 拉取列表。
 2. 客户端通过 `GET /memos/:memoId` 查看详情。
-3. 客户端通过 `GET /search`、`GET /review/random`、`GET /review/daily` 获取搜索与回顾结果。
+3. 客户端通过 `GET /memos`、`GET /review/random` 获取列表筛选与回顾结果。
 
 ### 6.3 删除与恢复
 
@@ -90,9 +87,9 @@ Memo Inbox 是一个基于 VCPToolBox 插件体系构建的单用户 memo 收件
 3. 客户端可通过 `GET /trash` 查看回收站。
 4. 客户端可通过 `POST /memos/:memoId/restore` 恢复，或通过 `DELETE /memos/:memoId/purge` 永久删除。
 
-### 6.4 导入与维护任务
+### 6.4 导入任务
 
-1. 客户端调用 `POST /imports`、`POST /maintenance/reindex` 或 `POST /maintenance/reconcile`。
+1. 客户端调用 `POST /imports`。
 2. 服务端返回 `taskId`。
 3. 客户端通过 `GET /tasks/:taskId` 轮询结果，或通过 WebSocket 订阅增量事件。
 
@@ -160,16 +157,14 @@ memo 文件内容保持与现有日记体系兼容，正文中可包含：
 
 ### 7.5 搜索与回顾
 
-- `GET /search` 支持 `q`、`tag`、`from`、`to`、`limit`。
-- 当前搜索逻辑是对活动 memo 列表做关键词和标签过滤。
+- `GET /memos` 支持 `q`、`tag`、`from`、`to`、`hasImage`、`limit`、`cursor`。
+- 当前列表筛选逻辑是按创建时间倒序逐页扫描 memo 文件，并在服务端按条件过滤。
+- `GET /memos` 返回的 `total` 表示当前筛选条件下的总命中数，不是当前页条数。
 - `GET /review/random` 提供轻量回顾入口。
-- `GET /review/daily` 提供规则型每日回顾入口。
 
-### 7.6 导入与维护
+### 7.6 导入
 
 - `POST /imports` 以异步任务方式执行批量导入。
-- `POST /maintenance/reindex` 负责重建 memo 内存索引。
-- `POST /maintenance/reconcile` 预留为存储一致性检查入口。
 
 ### 7.7 任务与通知
 
@@ -217,9 +212,7 @@ ws://<host>:<port>/vcp-memo-inbox/VCP_Key=<VCP_Key>
 - `DELETE /api/plugins/MemoInboxAPI/memos/:memoId/purge`
 - `GET /api/plugins/MemoInboxAPI/memos`
 - `GET /api/plugins/MemoInboxAPI/trash`
-- `GET /api/plugins/MemoInboxAPI/search`
 - `GET /api/plugins/MemoInboxAPI/review/random`
-- `GET /api/plugins/MemoInboxAPI/review/daily`
 
 ### 8.2 任务与运维接口
 
@@ -227,9 +220,6 @@ ws://<host>:<port>/vcp-memo-inbox/VCP_Key=<VCP_Key>
 - `GET /api/plugins/MemoInboxAPI/tasks/:taskId`
 - `GET /api/plugins/MemoInboxAPI/tasks/:taskId/errors`
 - `POST /api/plugins/MemoInboxAPI/tasks/:taskId/cancel`
-- `GET /api/plugins/MemoInboxAPI/maintenance/status`
-- `POST /api/plugins/MemoInboxAPI/maintenance/reindex`
-- `POST /api/plugins/MemoInboxAPI/maintenance/reconcile`
 - `GET /api/plugins/MemoInboxAPI/status`
 
 ## 9. 错误响应要求
@@ -266,16 +256,14 @@ ws://<host>:<port>/vcp-memo-inbox/VCP_Key=<VCP_Key>
 
 - 能通过 Bearer Key 创建、读取、更新、删除和恢复 memo。
 - 能创建带图片附件的 memo，并返回可访问的图片 URL。
-- 能通过列表、详情、搜索与回收站接口获取 memo。
-- 能发起导入、重建索引、对账任务，并获得 `taskId`。
+- 能通过列表、详情、回收站接口获取 memo。
+- 能发起导入任务，并获得 `taskId`。
 - 能通过 HTTP 查询任务状态。
 - 能通过 WebSocket 接收任务状态变更事件。
 - 新创建 memo 落入 `dailynote/MyMemos/`，不引入独立持久化体系。
 
 ## 12. 后续演进建议
 
-- 为 `GET /memos` 补齐标签和时间过滤能力。
 - 将搜索从关键词过滤升级到 KnowledgeBaseManager 检索。
 - 将导入模式扩展为真正的 `upsert`、去重和幂等导入。
 - 为回顾能力引入真正随机与规则策略。
-- 为维护接口补齐真实附件检查和漂移修复。

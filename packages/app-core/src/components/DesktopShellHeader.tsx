@@ -33,11 +33,21 @@ export function DesktopShellHeader({ activeTab, centerSlot }: DesktopShellHeader
   const getTaskTypeLabel = (type: string) => {
     const labels: Record<string, string> = {
       memo_import: "笔记导入",
-      memo_maintenance: "系统维护",
-      memo_reindex: "索引重建",
-      memo_reconcile: "数据对齐"
+      memo_maintenance: "系统维护"
     };
     return labels[type] || type.toUpperCase();
+  };
+
+  const getNotificationTone = (status: string) => {
+    if (status === "completed") {
+      return "text-success bg-success/10";
+    }
+
+    if (status === "cancelled") {
+      return "text-on-surface-variant bg-surface-container";
+    }
+
+    return "text-red-500 bg-red-500/10";
   };
 
   return (
@@ -136,7 +146,7 @@ export function DesktopShellHeader({ activeTab, centerSlot }: DesktopShellHeader
                       <div className="h-1.5 w-full bg-surface-container rounded-full overflow-hidden">
                         <div 
                           className="h-full bg-primary transition-all duration-300" 
-                          style={{ width: `${task.progress * 100}%` }}
+                          style={{ width: `${task.progress}%` }}
                         />
                       </div>
                     </div>
@@ -146,7 +156,7 @@ export function DesktopShellHeader({ activeTab, centerSlot }: DesktopShellHeader
                   {notifications.map(n => (
                     <div key={n.id} className={`p-3 rounded-2xl transition-colors ${n.isRead ? 'opacity-60' : 'bg-surface-container-highest shadow-sm'}`}>
                       <div className="flex items-start gap-3">
-                        <div className={`mt-0.5 rounded-full p-1 ${n.status === 'completed' ? 'text-success bg-success/10' : 'text-red-500 bg-red-500/10'}`}>
+                        <div className={`mt-0.5 rounded-full p-1 ${getNotificationTone(n.status)}`}>
                           {n.status === 'completed' ? <CheckCircle2 size={14} /> : <XCircle size={14} />}
                         </div>
                         <div className="flex-1">

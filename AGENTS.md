@@ -49,7 +49,6 @@
 - 基础搜索
 - 回顾入口
 - 导入任务
-- 维护任务
 - 任务状态查询
 - 任务 WebSocket 订阅与推送
 
@@ -61,11 +60,9 @@
 
 - `GET /memos` 当前只支持 `limit` 与 `cursor`，不要默认设计成完整标签/时间过滤列表页。
 - 搜索当前是关键词和标签过滤，不是语义搜索，不要用“智能检索”“语义召回”之类文案暗示。
-- `review/random` 当前不是真随机；`review/daily` 也是规则型简化实现，不要包装成复杂回顾引擎。
+- `review/random` 当前不是真随机，不要包装成复杂回顾引擎。
 - `imports` 当前没有真正实现 `upsert` / `skip_duplicates` 语义，不要设计成强幂等导入控制台。
 - 任务 `cancel` 当前只更新任务状态，不保证中断后台执行，不要做“立即终止并回滚”式强承诺 UI。
-- `maintenance/reconcile` 当前是占位结果，不要做真实修复面板的假象。
-- `maintenance/status` 当前 `attachmentCount` 固定为 `0`，不要把它包装成可信统计指标。
 
 ## 5. Explicit Non-Goals
 
@@ -274,7 +271,7 @@
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **memo-inbox-client** (1560 symbols, 4275 relationships, 129 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **memo-inbox-client** (1646 symbols, 4520 relationships, 136 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > If any GitNexus tool warns the index is stale, run `npx gitnexus analyze` in terminal first.
 
