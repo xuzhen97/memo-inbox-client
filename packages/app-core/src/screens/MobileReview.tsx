@@ -5,21 +5,7 @@ import { useApiClient } from "../api/ApiClientContext";
 import { useAppConfig } from "../config/AppConfigContext";
 import { appNavigateEvent } from "../router/createAppRouter";
 import { formatDateTime } from "../utils/formatDateTime";
-
-function resolveAttachmentUrl(baseUrl: string, url?: string) {
-  if (!url) return "";
-  if (url.startsWith("http") || url.startsWith("blob:")) return url;
-  return `${baseUrl}${url.startsWith("/") ? "" : "/"}${url}`;
-}
-
-function normalizeAttachmentUrl(attachment: unknown) {
-  if (typeof attachment === "string") return attachment;
-  if (attachment && typeof attachment === "object" && "url" in attachment) {
-    const url = (attachment as { url?: unknown }).url;
-    return typeof url === "string" ? url : "";
-  }
-  return "";
-}
+import { normalizeMemoAttachmentUrl, resolveMemoAttachmentUrl } from "../utils/memoAttachmentUrls";
 
 function navigateToInbox() {
   if (window.location.pathname !== "/") {
@@ -122,7 +108,7 @@ export function MobileReview() {
             </p>
 
             {data.attachments && data.attachments.length > 0 && (() => {
-              const attachmentUrls = data.attachments.map(normalizeAttachmentUrl).filter(Boolean);
+              const attachmentUrls = data.attachments.map(normalizeMemoAttachmentUrl).filter(Boolean);
               if (attachmentUrls.length === 0) return null;
               
               const previewUrls = attachmentUrls.slice(0, 4);
@@ -131,7 +117,10 @@ export function MobileReview() {
 
               return (
                 <div className="mb-5">
-                  <div className={`grid ${gridColsClass} max-w-[280px] gap-2`}>
+                  <div
+                    data-testid="mobile-review-attachments"
+                    className={`grid ${gridColsClass} max-w-[280px] gap-2`}
+                  >
                     {previewUrls.map((url, index) => {
                       const isLastPreview = index === previewUrls.length - 1;
                       const showRemainingOverlay = remainingCount > 0 && isLastPreview;
@@ -143,7 +132,7 @@ export function MobileReview() {
                           onClick={() => openLightbox(attachmentUrls, index)}
                         >
                           <img
-                            src={resolveAttachmentUrl(apiUrl, url)}
+                            src={resolveMemoAttachmentUrl(apiUrl, url)}
                             alt="attachment"
                             className="h-full w-full object-cover transition-transform duration-200 group-hover:scale-[1.03]"
                           />
@@ -190,6 +179,7 @@ export function MobileReview() {
 
       {lightboxState && (
         <div
+          data-testid="mobile-review-lightbox"
           className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 px-4 py-10 touch-none"
           onClick={closeLightbox}
           onTouchStart={handleTouchStart}
@@ -222,7 +212,8 @@ export function MobileReview() {
           )}
           <img
             key={lightboxState.attachmentUrls[lightboxState.activeIndex] ?? String(lightboxState.activeIndex)}
-            src={resolveAttachmentUrl(apiUrl, lightboxState.attachmentUrls[lightboxState.activeIndex])}
+            data-testid="mobile-review-lightbox-image"
+            src={resolveMemoAttachmentUrl(apiUrl, lightboxState.attachmentUrls[lightboxState.activeIndex])}
             alt="Lightbox Preview"
             className="max-h-full max-w-full object-contain pointer-events-none select-none"
           />

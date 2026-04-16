@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Search, Image as ImageIcon, Tag as TagIcon, Link as LinkIcon, CheckCircle2, Loader2, X, Plus } from "lucide-react";
+import { Search, Image as ImageIcon, Tag as TagIcon, Link as LinkIcon, CheckCircle2, Loader2, X, Plus, ChevronUp } from "lucide-react";
 import { useApiClient } from "../api/ApiClientContext";
 import { useAppConfig } from "../config/AppConfigContext";
 import { useCreateMemo, useRemoveMemo, useInfiniteMemoList } from "@memo-inbox/api-client";
@@ -13,25 +13,7 @@ import {
   confirmMemoDelete,
   openMemoDeleteConfirmation,
 } from "./memoDeleteState";
-
-function resolveAttachmentUrl(baseUrl: string, url?: string) {
-  if (!url) return "";
-  if (url.startsWith("http") || url.startsWith("blob:")) return url;
-  return `${baseUrl}${url.startsWith("/") ? "" : "/"}${url}`;
-}
-
-function normalizeAttachmentUrl(attachment: unknown) {
-  if (typeof attachment === "string") {
-    return attachment;
-  }
-
-  if (attachment && typeof attachment === "object" && "url" in attachment) {
-    const url = (attachment as { url?: unknown }).url;
-    return typeof url === "string" ? url : "";
-  }
-
-  return "";
-}
+import { normalizeMemoAttachmentUrl, resolveMemoAttachmentUrl } from "../utils/memoAttachmentUrls";
 
 // Hook for debounce
 function useDebounce<T>(value: T, delay: number): T {
@@ -73,6 +55,7 @@ export function DesktopInbox() {
     attachmentUrls: string[];
     activeIndex: number;
   } | null>(null);
+  const [showBackToTop, setShowBackToTop] = React.useState(false);
 
   const apiClient = useApiClient();
 
@@ -304,7 +287,23 @@ export function DesktopInbox() {
     };
   }, [lightboxState]);
 
+  React.useEffect(() => {
+    const handleScroll = () => {
+      setShowBackToTop(window.scrollY > 360);
+    };
+
+    handleScroll();
+    window.addEventListener("scroll", handleScroll, { passive: true });
+
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+    };
+  }, []);
+
   const followedTags = settings.followedTags || [];
+  const handleBackToTop = () => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
 
   const isLoading = isSearchLoading && !infiniteSearchData;
 
@@ -568,7 +567,7 @@ export function DesktopInbox() {
 
                     {memo.attachments && memo.attachments.length > 0 && (() => {
                       const attachmentUrls = memo.attachments
-                        .map(normalizeAttachmentUrl)
+                        .map(normalizeMemoAttachmentUrl)
                         .filter(Boolean);
 
                       if (attachmentUrls.length === 0) {
@@ -599,7 +598,7 @@ export function DesktopInbox() {
                                   aria-label={`查看第 ${index + 1} 张图片`}
                                 >
                                   <img
-                                    src={resolveAttachmentUrl(apiUrl, url)}
+                                    src={resolveMemoAttachmentUrl(apiUrl, url)}
                                     alt={`Memo attachment ${index + 1}`}
                                     className="h-full w-full object-cover transition-transform duration-200 group-hover:scale-[1.03]"
                                   />
@@ -761,6 +760,18 @@ export function DesktopInbox() {
         </div>
       </main>
 
+      {showBackToTop ? (
+        <button
+          type="button"
+          data-testid="desktop-inbox-back-to-top"
+          aria-label="回到顶部"
+          className="fixed bottom-8 right-8 z-40 inline-flex h-12 w-12 items-center justify-center rounded-full bg-primary text-white shadow-lg transition-transform hover:scale-[1.03]"
+          onClick={handleBackToTop}
+        >
+          <ChevronUp size={18} />
+        </button>
+      ) : null}
+
       {lightboxState ? (
         <div
           data-testid="memo-lightbox"
@@ -810,7 +821,7 @@ export function DesktopInbox() {
             <img
               key={`${lightboxState.memoId}-${lightboxState.attachmentUrls[lightboxState.activeIndex] ?? lightboxState.activeIndex}`}
               data-testid="memo-lightbox-image"
-              src={resolveAttachmentUrl(
+              src={resolveMemoAttachmentUrl(
                 apiUrl,
                 lightboxState.attachmentUrls[lightboxState.activeIndex]
               )}

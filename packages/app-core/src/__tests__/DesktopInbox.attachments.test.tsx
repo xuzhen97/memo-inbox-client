@@ -64,6 +64,57 @@ vi.mock("@memo-inbox/api-client", () => ({
 }));
 
 describe("DesktopInbox attachments", () => {
+  it("shows a back-to-top button after scrolling and scrolls to the top when clicked", async () => {
+    const scrollToMock = vi.fn();
+    Object.defineProperty(window, "scrollTo", {
+      configurable: true,
+      writable: true,
+      value: scrollToMock,
+    });
+    Object.defineProperty(window, "scrollY", {
+      configurable: true,
+      writable: true,
+      value: 0,
+    });
+
+    const host = document.createElement("div");
+    document.body.appendChild(host);
+    const root = createRoot(host);
+
+    await act(async () => {
+      root.render(
+        <TestProviders>
+          <DesktopInbox />
+        </TestProviders>
+      );
+    });
+
+    expect(host.querySelector('[data-testid="desktop-inbox-back-to-top"]')).toBeNull();
+
+    await act(async () => {
+      Object.defineProperty(window, "scrollY", {
+        configurable: true,
+        writable: true,
+        value: 500,
+      });
+      window.dispatchEvent(new Event("scroll"));
+    });
+
+    const backToTop = host.querySelector('[data-testid="desktop-inbox-back-to-top"]');
+    expect(backToTop).not.toBeNull();
+
+    await act(async () => {
+      backToTop?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    expect(scrollToMock).toHaveBeenCalledWith({ top: 0, behavior: "smooth" });
+
+    await act(async () => {
+      root.unmount();
+    });
+    host.remove();
+  });
+
   it("resolves attachment urls from the configured api url", async () => {
     const host = document.createElement("div");
     document.body.appendChild(host);
