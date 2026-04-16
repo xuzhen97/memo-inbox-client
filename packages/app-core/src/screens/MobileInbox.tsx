@@ -784,6 +784,7 @@ export function MobileInbox() {
             {lightboxState.activeIndex + 1} / {lightboxState.attachmentUrls.length}
           </div>
           <img
+            key={`${lightboxState.memoId}-${lightboxState.attachmentUrls[lightboxState.activeIndex] ?? lightboxState.activeIndex}`}
             data-testid="mobile-lightbox-image"
             src={resolveAttachmentUrl(apiUrl, lightboxState.attachmentUrls[lightboxState.activeIndex])}
             alt="Lightbox Preview"

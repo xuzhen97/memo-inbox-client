@@ -67,6 +67,49 @@ function buildListResult() {
   };
 }
 
+function buildAttachment(index: number) {
+  return {
+    imageId: `image-${index}`,
+    url: `/images/${index}.png`,
+    mimeType: "image/png",
+    relativePath: `images/${index}.png`,
+  };
+}
+
+function buildListResultWithAttachmentCount(attachmentCount: number) {
+  return {
+    data: {
+      pages: [
+        {
+          items: [
+            {
+              memoId: "memo-1",
+              header: { date: "2026-04-15", maidName: "tester" },
+              content: "memo with many images",
+              attachments: Array.from({ length: attachmentCount }, (_, index) =>
+                buildAttachment(index + 1),
+              ),
+              tags: ["工作", "灵感"],
+              meta: { memoId: "memo-1" },
+              createdAt: "2026-04-15T10:00:00.000Z",
+              updatedAt: "2026-04-15T10:00:00.000Z",
+              deleted: false,
+              filename: "memo-1.md",
+            },
+          ],
+          nextCursor: null,
+          total: 1,
+        },
+      ],
+    },
+    isLoading: false,
+    isFetchingNextPage: false,
+    fetchNextPage: vi.fn(),
+    hasNextPage: false,
+    refetch: vi.fn(),
+  };
+}
+
 async function renderMobileInbox() {
   const host = document.createElement("div");
   document.body.appendChild(host);
@@ -173,6 +216,41 @@ describe("MobileInbox enhancements", () => {
     expect(view.host.textContent).toContain("2 / 2");
     expect(view.host.querySelector('[data-testid="mobile-lightbox-image"]')?.getAttribute("src")).toContain("/images/2.png");
 
+  });
+
+  it("keeps lightbox image and indicator in sync when swiping from the fourth preview into hidden attachments", async () => {
+    useInfiniteMemoListMock.mockReturnValue(buildListResultWithAttachmentCount(8));
+    const view = await renderMobileInbox();
+
+    const previewButtons = view.host.querySelectorAll('[data-testid="mobile-memo-attachments"] button');
+    const fourthPreviewButton = previewButtons[3];
+    expect(fourthPreviewButton).not.toBeUndefined();
+
+    await act(async () => {
+      fourthPreviewButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    expect(view.host.textContent).toContain("4 / 8");
+    expect(view.host.querySelector('[data-testid="mobile-lightbox-image"]')?.getAttribute("src")).toContain("/images/4.png");
+
+    const lightbox = view.host.querySelector('[data-testid="mobile-lightbox"]');
+    expect(lightbox).not.toBeNull();
+
+    await act(async () => {
+      lightbox?.dispatchEvent(new TouchEvent("touchstart", {
+        bubbles: true,
+        touches: [{ clientX: 220, clientY: 180 } as Touch],
+        changedTouches: [{ clientX: 220, clientY: 180 } as Touch],
+      }));
+      lightbox?.dispatchEvent(new TouchEvent("touchend", {
+        bubbles: true,
+        touches: [],
+        changedTouches: [{ clientX: 120, clientY: 180 } as Touch],
+      }));
+    });
+
+    expect(view.host.textContent).toContain("5 / 8");
+    expect(view.host.querySelector('[data-testid="mobile-lightbox-image"]')?.getAttribute("src")).toContain("/images/5.png");
   });
 
   it("does not crash when dragging after double-tap zoom", async () => {

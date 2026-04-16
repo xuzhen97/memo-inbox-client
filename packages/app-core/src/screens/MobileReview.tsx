@@ -221,6 +221,7 @@ export function MobileReview() {
             </>
           )}
           <img
+            key={lightboxState.attachmentUrls[lightboxState.activeIndex] ?? String(lightboxState.activeIndex)}
             src={resolveAttachmentUrl(apiUrl, lightboxState.attachmentUrls[lightboxState.activeIndex])}
             alt="Lightbox Preview"
             className="max-h-full max-w-full object-contain pointer-events-none select-none"

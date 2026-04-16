@@ -404,6 +404,7 @@ export function DesktopArchive() {
             onClick={(event) => event.stopPropagation()}
           >
             <img
+              key={`${lightboxState.memoId}-${lightboxState.attachmentUrls[lightboxState.activeIndex] ?? lightboxState.activeIndex}`}
               data-testid="memo-lightbox-image"
               src={resolveAttachmentUrl(
                 apiUrl,
